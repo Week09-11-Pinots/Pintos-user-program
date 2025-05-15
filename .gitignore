@@ -1,0 +1,47 @@
+# Build artifacts
+/build/
+/*.o
+/*.d
+/*.so
+/*.a
+*.out
+*.elf
+*.img
+*.bin
+*.map
+*.sym
+*.qemu
+*.qemu.log
+*.qemu.out
+*.dump
+*.disasm
+
+# Pintos disk images
+*.dsk
+*.fsf
+*.fsd
+
+# Test results
+*.result
+*.output
+*.expected
+*.log
+*.o
+*.errors
+
+# GDB and debugger files
+*.gdb
+*.gdbinit
+
+# Core dumps
+core
+core.*
+
+# Editor/OS junk
+*~
+\#*\#
+.DS_Store
+*.swp
+*.swo
+.vscode/
+.vscode/*
