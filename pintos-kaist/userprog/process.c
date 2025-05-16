@@ -198,6 +198,8 @@ int process_exec(void *f_name)
 	if (!success)
 		return -1;
 
+	// hex_dump(0, (void *)_if.rsp, 96, true);
+	// hex_dump(_if.rsp, _if.rsp, KERN_BASE - _if.rsp, true);
 	/* 프로세스를 전환합니다. */
 	do_iret(&_if);
 	NOT_REACHED();
@@ -276,6 +278,7 @@ process_cleanup(void)
 		curr->pml4 = NULL;
 		pml4_activate(NULL);
 		pml4_destroy(pml4);
+		// power_off();
 	}
 }
 
@@ -396,9 +399,15 @@ load(const char *file_name, struct intr_frame *if_)
 	{
 		struct Phdr phdr;
 
-		if (file_ofs < 0 || file_ofs > file_length(file))
+		off_t phdr_ofs = ehdr.e_phoff + i * sizeof(struct Phdr);
+		file_seek(file, phdr_ofs);
+		if (file_read(file, &phdr, sizeof phdr) != sizeof phdr)
 			goto done;
-		file_seek(file, file_ofs);
+		// printf("i=%d, p_type=%d, p_vaddr=0x%lx\n", i, phdr.p_type, phdr.p_vaddr);
+
+		// if (file_ofs < 0 || file_ofs > file_length(file))
+		// 	goto done;
+		// file_seek(file, file_ofs);
 
 		if (file_read(file, &phdr, sizeof phdr) != sizeof phdr)
 			goto done;
@@ -424,7 +433,7 @@ load(const char *file_name, struct intr_frame *if_)
 				uint64_t mem_page = phdr.p_vaddr & ~PGMASK;
 				uint64_t page_offset = phdr.p_vaddr & PGMASK;
 				uint32_t read_bytes, zero_bytes;
-				printf("[LOAD] i=%d, p_vaddr=0x%lx, mem_page=0x%lx\n", i, phdr.p_vaddr, mem_page);
+				// printf("[LOAD] i=%d, p_vaddr=0x%lx, mem_page=0x%lx\n", i, phdr.p_vaddr, mem_page);
 				if (phdr.p_filesz > 0)
 				{
 					/* Normal segment.
@@ -464,21 +473,25 @@ load(const char *file_name, struct intr_frame *if_)
 		rsp_arr[i] = if_->rsp;
 		memcpy((void *)if_->rsp, argv[i], strlen(argv[i]) + 1);
 	}
-	if_->rsp -= 8;			   // NULL 문자열을 위한 주소 공간, 64비트니까 8바이트 확보
-	*(uint64_t *)if_->rsp = 0; // 위 주소공간에 NULL 넣어주기
+	if_->rsp = if_->rsp & ~0x7ULL; // 8바이트 패딩 -> 왜 먼저 하지?
+	if_->rsp -= 8;				   // NULL 문자열을 위한 주소 공간, 64비트니까 8바이트 확보
+	*(uint64_t *)if_->rsp = 0;	   // 위 주소공간에 NULL 넣어주기
 	for (int i = argc - 1; i >= 0; i--)
 	{
 		if_->rsp -= 8;						// 8바이트만큼 rsp감소
 		*(uint64_t *)if_->rsp = rsp_arr[i]; // rsp가 가리키는 공간에 argv주소 저장
 	}
 	char **argv_addr_on_stack = (char **)if_->rsp;
-	if_->rsp = if_->rsp & ~0x7ULL;						  // 8바이트 패딩 -> 왜 먼저 하지?
-	if_->rsp -= 8;										  // 주소는 64비트니까 8바이트 확보
-	*(uint64_t *)if_->rsp = (uint64_t)argv_addr_on_stack; // 포인터 배열의 시작주소
-	if_->rsp -= 4;										  // int 형이니까 4바이트 확보
-	*(int *)if_->rsp = argc;							  // argc 저장
-	if_->rsp -= 4;										  // 패딩
-	*(int *)if_->rsp = 0;								  // 패딩
+	// if_->rsp -= 8;										  // 주소는 64비트니까 8바이트 확보
+	// *(uint64_t *)if_->rsp = (uint64_t)argv_addr_on_stack; // 포인터 배열의 시작주소
+	// if_->rsp -= 4;			 // int 형이니까 4바이트 확보
+	// *(int *)if_->rsp = argc; // argc 저장
+	// if_->rsp -= 4;			 // 패딩
+	// *(int *)if_->rsp = 0;	 // 패딩
+	if_->rsp -= 8;
+	*(uint64_t *)if_->rsp = 0;
+	if_->R.rsi = argv_addr_on_stack;
+	if_->R.rdi = argc;
 
 	success = true;
 

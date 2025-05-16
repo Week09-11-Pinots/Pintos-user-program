@@ -12,6 +12,8 @@
 void syscall_entry(void);
 void syscall_handler(struct intr_frame *);
 static int sys_write(int fd, const void *buffer, unsigned size);
+static void sys_exit(int);
+static void sys_halt();
 
 /* 시스템 콜.
  *
@@ -57,8 +59,10 @@ void syscall_handler(struct intr_frame *f UNUSED)
 	switch (syscall_num)
 	{
 	case SYS_HALT:
+
 		break;
 	case SYS_EXIT:
+		sys_exit(arg1);
 		break;
 	case SYS_FORK:
 		break;
@@ -98,4 +102,12 @@ static int sys_write(int fd, const void *buffer, unsigned size)
 		return size;
 	}
 	return -1;
+}
+
+static void sys_exit(int status)
+{
+	struct thread *cur = thread_current();
+
+	printf("%s: exit(%d)\n", thread_name(), status);
+	thread_exit();
 }
