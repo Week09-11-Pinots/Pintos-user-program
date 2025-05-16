@@ -364,8 +364,8 @@ load(const char *file_name, struct intr_frame *if_)
 	int i;
 
 	char *argv[MAX_ARGS];
-	int argc = 0;
-	// int argc = parse_args(file_name, argv);
+	// int argc = 0;
+	int argc = parse_args(file_name, argv);
 	uint64_t rsp_arr[argc];
 
 	/* 페이지 디렉터리를 할당하고 활성화합니다. */
