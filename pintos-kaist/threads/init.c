@@ -70,60 +70,64 @@ main (void) {
 	uint64_t mem_end;
 	char **argv;
 
-	/* Clear BSS and get machine's RAM size. */
+	/* 1. BSS 영역 초기화 (.bss에 있는 전역 변수들을 0으로 설정) */
 	bss_init ();
 
-	/* Break command line into arguments and parse options. */
+	/* 2. 커맨드라인 문자열을 argv 배열로 파싱하고 옵션을 처리 */
 	argv = read_command_line ();
 	argv = parse_options (argv);
 
-	/* Initialize ourselves as a thread so we can use locks,
-	   then enable console locking. */
+	/* 3. 스레드 시스템 초기화 (lock, ready list 등) */
 	thread_init ();
+	/* 4. 콘솔 초기화 (동기화된 printf 지원용) */
 	console_init ();
 
-	/* Initialize memory system. */
-	mem_end = palloc_init ();
-	malloc_init ();
-	paging_init (mem_end);
+	/* 5. 메모리 시스템 초기화 */
+	mem_end = palloc_init ();	// 페이지 할당자 초기화 (유저/커널 페이지 풀)
+	malloc_init ();	// 커널 heap 초기화
+	paging_init (mem_end);	// 페이지 테이블 설정 (커널 초기 매핑 포함)
 
 #ifdef USERPROG
-	tss_init ();
-	gdt_init ();
+	/* 6. 사용자 프로그램 실행을 위한 환경 설정 */
+	tss_init ();	// Task State Segment 초기화 (시스템 콜용 커널 스택 설정)
+	gdt_init ();	// GDT(Global Descriptor Table) 초기화 (세그먼트 셀렉터용)
 #endif
 
-	/* Initialize interrupt handlers. */
-	intr_init ();
-	timer_init ();
-	kbd_init ();
-	input_init ();
+	/* 7. 인터럽트 및 장치 초기화 */
+	intr_init ();	// 인터럽트 디스크립터 테이블(IDT) 설정
+	timer_init ();	// 하드웨어 타이머 초기화
+	kbd_init ();	// 키보드 장치 초기화
+	input_init ();	// 키보드 입력 버퍼 초기화
 #ifdef USERPROG
-	exception_init ();
-	syscall_init ();
+	exception_init ();	// 사용자 예외 처리기 등록 (ex. page fault handler)
+	syscall_init ();	// 시스템 콜 인터페이스 초기화 (MSR 등록)
 #endif
-	/* Start thread scheduler and enable interrupts. */
-	thread_start ();
-	serial_init_queue ();
-	timer_calibrate ();
+
+	/* 8. 커널 스케줄러 시작 + 인터럽트 허용 */
+	thread_start ();	// 초기 thread → idle thread로 교체, 인터럽트 on
+	serial_init_queue ();  // 시리얼 포트 초기화 (test용)
+	timer_calibrate ();	// 타이머 정확도 보정
 
 #ifdef FILESYS
-	/* Initialize file system. */
-	disk_init ();
-	filesys_init (format_filesys);
+	/* 9. 파일 시스템 초기화 */
+	disk_init ();	// 디스크 하드웨어 초기화
+	filesys_init (format_filesys);	// 파일 시스템 구조체 및 루트 초기화
 #endif
 
 #ifdef VM
-	vm_init ();
+	/* 10. 가상 메모리 초기화 (SPL 등) */
+	vm_init ();	// supplemental page table 및 swap 공간 설정
 #endif
-
+	/* 11. 부팅 완료 메시지 출력 */
 	printf ("Boot complete.\n");
 
-	/* Run actions specified on kernel command line. */
+	/* 12. 커맨드라인 인자로 받은 실행 명령 수행 (예: run alarm-multiple) */
 	run_actions (argv);
 
-	/* Finish up. */
+	/* 13. 옵션에 따라 자동 종료 */
 	if (power_off_when_done)
 		power_off ();
+	/* 14. main()은 NO_RETURN → 종료 시 명시적으로 thread_exit 호출 */
 	thread_exit ();
 }
 
