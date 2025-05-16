@@ -424,6 +424,7 @@ load(const char *file_name, struct intr_frame *if_)
 				uint64_t mem_page = phdr.p_vaddr & ~PGMASK;
 				uint64_t page_offset = phdr.p_vaddr & PGMASK;
 				uint32_t read_bytes, zero_bytes;
+				printf("[LOAD] i=%d, p_vaddr=0x%lx, mem_page=0x%lx\n", i, phdr.p_vaddr, mem_page);
 				if (phdr.p_filesz > 0)
 				{
 					/* Normal segment.
