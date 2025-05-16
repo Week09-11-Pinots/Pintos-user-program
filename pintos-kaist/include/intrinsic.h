@@ -6,6 +6,9 @@
    new page tables immediately.  See [IA32-v2a] "MOV--Move
    to/from Control Registers" and [IA32-v3a] 3.7.5 "Base Address
    of the Page Directory". */
+/* 페이지 디렉토리의 물리적 주소를 PDBR(페이지 디렉토리 베이스 레지스터)이라고 알려진 CR3에 저장한다.
+이것은 우리의 새로운 페이지 테이블을 즉각적으로 활성화 시킨다. 
+*/
 __attribute__((always_inline))
 static __inline void lcr3(uint64_t val) {
 	__asm __volatile("movq %0, %%cr3" : : "r" (val));
@@ -119,6 +122,9 @@ static __inline uint64_t rcr2(void) {
 	return val;
 }
 
+/*MSR(Model-Specific Register)에 값 기록.
+인자로 받은 ecx(MSR 번호)와 val(64비트 값)을 wrmsr 명령어를 통해 해당 MSR에 기록함.
+eax에는 하위 32비트, dex에는 상위 32비트, ecx에는 MSR 번호를 각각 넣어 wrmsr을 실행.*/
 __attribute__((always_inline))
 static __inline void write_msr(uint32_t ecx, uint64_t val) {
 	uint32_t edx, eax;

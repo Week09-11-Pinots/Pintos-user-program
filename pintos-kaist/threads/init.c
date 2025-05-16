@@ -99,7 +99,7 @@ main (void) {
 	input_init ();
 #ifdef USERPROG
 	exception_init ();
-	syscall_init ();
+	syscall_init (); //여기서 시스템 콜 초기화 
 #endif
 	/* Start thread scheduler and enable interrupts. */
 	thread_start ();

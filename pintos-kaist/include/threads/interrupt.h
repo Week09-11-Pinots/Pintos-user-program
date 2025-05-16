@@ -21,47 +21,47 @@ struct gp_registers {
 	uint64_t r14;
 	uint64_t r13;
 	uint64_t r12;
-	uint64_t r11;
-	uint64_t r10;
-	uint64_t r9;
-	uint64_t r8;
-	uint64_t rsi;
-	uint64_t rdi;
+	uint64_t r11; 
+	uint64_t r10; //4번째 인자
+	uint64_t r9; //6번째 인자 
+	uint64_t r8; //5번째 인자
+	uint64_t rsi; //2번째 인자
+	uint64_t rdi; //1번째 인자
 	uint64_t rbp;
-	uint64_t rdx;
+	uint64_t rdx; //3번째 인자 
 	uint64_t rcx;
 	uint64_t rbx;
-	uint64_t rax;
+	uint64_t rax; //함수의 반환값 저장. 시스템 콜 번호
 } __attribute__((packed));
 
 struct intr_frame {
 	/* Pushed by intr_entry in intr-stubs.S.
 	   These are the interrupted task's saved registers. */
 	struct gp_registers R;
-	uint16_t es;
-	uint16_t __pad1;
-	uint32_t __pad2;
-	uint16_t ds;
-	uint16_t __pad3;
-	uint32_t __pad4;
+	uint16_t es; //ES(Extra Segment) 세그먼트 레지스터 값
+	uint16_t __pad1; //패딩 
+	uint32_t __pad2; //패딩 
+	uint16_t ds; //DS(Data Segment) 세그먼트 레지스터 값. 
+	uint16_t __pad3; //패딩
+	uint32_t __pad4; //패딩 
 	/* Pushed by intrNN_stub in intr-stubs.S. */
-	uint64_t vec_no; /* Interrupt vector number. */
-/* Sometimes pushed by the CPU,
-   otherwise for consistency pushed as 0 by intrNN_stub.
-   The CPU puts it just under `eip', but we move it here. */
-	uint64_t error_code;
+	uint64_t vec_no; /* 인터럽트 벡터 번호. 어떤 인터럽트(예외,시스템 콜 등)가 발생했는지 구분하는 번호다. */
+/* 일부 예외(페이지 폴트 등)에서 CPU가 자동으로 푸시하는 에러 코드. 
+해당 예외가 아닌 경우 0으로 채워진다.
+*/
+	uint64_t error_code; 
 /* Pushed by the CPU.
    These are the interrupted task's saved registers. */
-	uintptr_t rip;
-	uint16_t cs;
-	uint16_t __pad5;
+	uintptr_t rip; //인터럽트 발생 당시 실행중이던 명령어의 주소(Instruction Pointer, 즉 EIP/RIP)
+	uint16_t cs; //코드 세그먼트 레지스터 값
+	uint16_t __pad5; 
 	uint32_t __pad6;
-	uint64_t eflags;
-	uintptr_t rsp;
-	uint16_t ss;
+	uint64_t eflags; /*EFLAGS 레지스터 값. CPU의 플래그(인터럽트 플래그, 방향 플래그 등) 상태를 저장.*/
+	uintptr_t rsp; //인터럽트 발생 당시의 스택 포인터(RSP)
+	uint16_t ss; //스택 세그먼트 레지스터 값 
 	uint16_t __pad7;
 	uint32_t __pad8;
-} __attribute__((packed));
+} __attribute__((packed)); /* 구조체 필드들이 패딩 없이 메모리에 연속적으로 배치되도록 함.*/
 
 typedef void intr_handler_func (struct intr_frame *);
 
