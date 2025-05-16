@@ -99,8 +99,8 @@ main (void) {
 	kbd_init ();	// 키보드 장치 초기화
 	input_init ();	// 키보드 입력 버퍼 초기화
 #ifdef USERPROG
-	exception_init ();	// 사용자 예외 처리기 등록 (ex. page fault handler)
-	syscall_init ();	// 시스템 콜 인터페이스 초기화 (MSR 등록)
+	exception_init ();
+	syscall_init ();
 #endif
 
 	/* 8. 커널 스케줄러 시작 + 인터럽트 허용 */

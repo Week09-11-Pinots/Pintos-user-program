@@ -94,10 +94,6 @@ static __inline int64_t syscall (uint64_t num_, uint64_t a1_, uint64_t a2_,
 			((uint64_t) ARG3), \
 			((uint64_t) ARG4), \
 			0))
-/* halt:
- * 시스템 종료 요청을 커널에 전달한다.
- * SYS_HALT은 halt syscall 번호이며, syscall0은 인자가 없는 syscall을 호출한다.
- * 호출 후 커널이 종료되므로, 이후 코드는 실행되지 않아야 하며 NOT_REACHED 매크로로 표시한다. */
 void
 halt (void) {
 	syscall0 (SYS_HALT);
@@ -233,9 +229,11 @@ close (int fd) {
 
 int
 dup2 (int oldfd, int newfd){
+	//추가 과제 
 	return syscall2 (SYS_DUP2, oldfd, newfd);
 }
 
+//아래부터는 일부는 프로젝트3에서, 나머지는 프로젝트 4에서 구현하게 됨.
 void *
 mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
 	return (void *) syscall5 (SYS_MMAP, addr, length, writable, fd, offset);
