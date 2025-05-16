@@ -46,8 +46,15 @@ void syscall_init(void)
 /* The main system call interface */
 void syscall_handler(struct intr_frame *f UNUSED)
 {
+	uint64_t syscall_num = f->R.rax;
+	uint64_t arg1 = f->R.rdi;
+	uint64_t arg2 = f->R.rsi;
+	uint64_t arg3 = f->R.rdx;
+	uint64_t arg4 = f->R.r10;
+	uint64_t arg5 = f->R.r8;
+	uint64_t arg6 = f->R.r9;
 
-	switch (f->R.rax)
+	switch (syscall_num)
 	{
 	case SYS_HALT:
 		break;
@@ -68,6 +75,7 @@ void syscall_handler(struct intr_frame *f UNUSED)
 	case SYS_READ:
 		break;
 	case SYS_WRITE:
+		sys_write(arg1, arg2, arg3);
 		break;
 	case SYS_SEEK:
 		break;
@@ -80,4 +88,14 @@ void syscall_handler(struct intr_frame *f UNUSED)
 		thread_exit();
 		break;
 	}
+}
+
+static int sys_write(int fd, const void *buffer, unsigned size)
+{
+	if (fd == 1)
+	{
+		putbuf(buffer, size);
+		return size;
+	}
+	return -1;
 }

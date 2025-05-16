@@ -22,13 +22,15 @@
 #include "vm/vm.h"
 #endif
 
-#define MAX_ARGS 32
+#define MAX_ARGS 128
+#define MAX_BUF 128
 
 static void process_cleanup(void);
 static bool load(const char *file_name, struct intr_frame *if_);
 static void initd(void *f_name);
 static void __do_fork(void *);
 static int parse_args(char *, char *[]);
+static bool setup_stack(struct intr_frame *if_);
 
 /* General process initializer for initd and other process. */
 static void
@@ -169,10 +171,9 @@ error:
 int process_exec(void *f_name)
 {
 	char *file_name = f_name;
+	char cp_file_name[MAX_BUF];
+	memcpy(cp_file_name, file_name, strlen(file_name) + 1);
 	bool success;
-	char *argv[MAX_ARGS];
-	int argc = parse_args(file_name, argv);
-	uint64_t rsp_arr[argc];
 
 	/* intr_frame을 thread 구조체 안의 것을 사용할 수 없습니다.
 	 * 이는 현재 스레드가 재스케줄될 때,
@@ -183,32 +184,14 @@ int process_exec(void *f_name)
 	_if.eflags = FLAG_IF | FLAG_MBS;
 
 	/* 유저 스택 페이지 할당 */
-	setup_stack(&_if);
-	uint64_t rsp = (uint64_t)USER_STACK; // 유저 스택 최상단 주소
-	for (int i = argc - 1; i >= 0; i--)
-	{
-		rsp -= strlen(argv[i]) + 1;
-		rsp_arr[i] = rsp;
-		memcpy(rsp, argv[i], strlen(argv[i]) + 1);
-	}
-	rsp -= 8;			  // NULL 문자열을 위한 주소 공간, 64비트니까 8바이트 확보
-	*(uint64_t *)rsp = 0; // 위 주소공간에 NULL 넣어주기
-	for (int i = argc - 1; i >= 0; i--)
-	{
-		rsp -= 8;					   // 8바이트만큼 rsp감소
-		*(uint64_t *)rsp = rsp_arr[i]; // rsp가 가리키는 공간에 argv주소 저장
-	}
-	rsp -= 8;						// 주소는 64비트니까 8바이트 확보
-	*(uint64_t *)rsp = &rsp_arr[0]; // 포인터 배열의 시작주소
-	rsp -= 4;						// int 형이니까 4바이트 확보
-	*(uint64_t *)rsp = argc;		// argc 저장
-	rsp = rsp & ~0x7ULL;
+	// setup_stack(&_if);
 
 	/* 현재 컨텍스트를 제거합니다. */
 	process_cleanup();
 
 	/* 그리고 이진 파일을 로드합니다. */
-	success = load(file_name, &_if);
+	ASSERT(cp_file_name != NULL);
+	success = load(cp_file_name, &_if);
 
 	/* 로드 실패 시 종료합니다. */
 	palloc_free_page(file_name);
@@ -249,6 +232,10 @@ int process_wait(tid_t child_tid UNUSED)
 
 	/* XXX: 힌트) pintos는 process_wait(initd)를 호출하면 종료되므로,
 	 * XXX:       process_wait을 구현하기 전까지는 여기에 무한 루프를 넣는 것을 추천합니다. */
+	while (1)
+	{
+	}
+
 	return -1;
 }
 
@@ -358,7 +345,6 @@ struct ELF64_PHDR
 #define ELF ELF64_hdr
 #define Phdr ELF64_PHDR
 
-static bool setup_stack(struct intr_frame *if_);
 static bool validate_segment(const struct Phdr *, struct file *);
 static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
 						 uint32_t read_bytes, uint32_t zero_bytes,
@@ -376,6 +362,11 @@ load(const char *file_name, struct intr_frame *if_)
 	off_t file_ofs;
 	bool success = false;
 	int i;
+
+	char *argv[MAX_ARGS];
+	int argc = 0;
+	// int argc = parse_args(file_name, argv);
+	uint64_t rsp_arr[argc];
 
 	/* 페이지 디렉터리를 할당하고 활성화합니다. */
 	t->pml4 = pml4_create();
@@ -466,6 +457,27 @@ load(const char *file_name, struct intr_frame *if_)
 
 	/* TODO: 여기에 코드를 작성하세요.
 	 * TODO: 인자 전달을 구현하세요 (project2/argument_passing.html 참고). */
+	for (int i = argc - 1; i >= 0; i--)
+	{
+		if_->rsp -= strlen(argv[i]) + 1;
+		rsp_arr[i] = if_->rsp;
+		memcpy((void *)if_->rsp, argv[i], strlen(argv[i]) + 1);
+	}
+	if_->rsp -= 8;			   // NULL 문자열을 위한 주소 공간, 64비트니까 8바이트 확보
+	*(uint64_t *)if_->rsp = 0; // 위 주소공간에 NULL 넣어주기
+	for (int i = argc - 1; i >= 0; i--)
+	{
+		if_->rsp -= 8;						// 8바이트만큼 rsp감소
+		*(uint64_t *)if_->rsp = rsp_arr[i]; // rsp가 가리키는 공간에 argv주소 저장
+	}
+	char **argv_addr_on_stack = (char **)if_->rsp;
+	if_->rsp = if_->rsp & ~0x7ULL;						  // 8바이트 패딩 -> 왜 먼저 하지?
+	if_->rsp -= 8;										  // 주소는 64비트니까 8바이트 확보
+	*(uint64_t *)if_->rsp = (uint64_t)argv_addr_on_stack; // 포인터 배열의 시작주소
+	if_->rsp -= 4;										  // int 형이니까 4바이트 확보
+	*(int *)if_->rsp = argc;							  // argc 저장
+	if_->rsp -= 4;										  // 패딩
+	*(int *)if_->rsp = 0;								  // 패딩
 
 	success = true;
 
@@ -570,6 +582,7 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 		/* 프로세스 주소 공간에 페이지를 추가합니다. */
 		if (!install_page(upage, kpage, writable))
 		{
+			printf("install page 실패: upage = %p\n", upage);
 			printf("fail\n");
 			palloc_free_page(kpage);
 			return false;
