@@ -43,7 +43,7 @@ check_intr:
 	jnb no_sti
 	sti                    /* restore interrupt */
 no_sti:
-	movabs $syscall_handler, %r12
+	movabs $syscall_handler, %r12 //syscall_handler를 호출, 인자로 intr_frame 전달됨. 
 	call *%r12
 	popq %r15
 	popq %r14
