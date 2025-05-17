@@ -187,13 +187,8 @@ int process_exec(void *f_name)
 	_if.cs = SEL_UCSEG;
 	_if.eflags = FLAG_IF | FLAG_MBS;
 
-	/* 유저 스택 페이지 할당 */
-	// setup_stack(&_if);
-
 	/* 현재 컨텍스트를 제거합니다. */
 	process_cleanup();
-
-	// memset(&_if, 0, sizeof _if);
 
 	/* 그리고 이진 파일을 로드합니다. */
 	ASSERT(cp_file_name != NULL);
@@ -243,20 +238,50 @@ int process_wait(tid_t child_tid UNUSED)
 	{
 		int data = 1;
 	}
-	// for (int i = 0; i < 100000000; i++)
-	// {
-	// 	int data = 1;
-	// }
-	// for (int i = 0; i < 100000000; i++)
-	// {
-	// 	int data = 1;
-	// }
-	// for (int i = 0; i < 100000000; i++)
-	// {
-	// 	int data = 1;
-	// }
-
-
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
 
 	return -1;
 }
@@ -298,7 +323,6 @@ process_cleanup(void)
 		curr->pml4 = NULL;
 		pml4_activate(NULL);
 		pml4_destroy(pml4);
-		// power_off();
 	}
 }
 
@@ -420,15 +444,16 @@ load(const char *file_name, struct intr_frame *if_)
 	{
 		struct Phdr phdr;
 
-		// off_t phdr_ofs = ehdr.e_phoff + i * sizeof(struct Phdr);
-		// file_seek(file, phdr_ofs);
-		// if (file_read(file, &phdr, sizeof phdr) != sizeof phdr)
-		// 	goto done;
-		// printf("i=%d, p_type=%d, p_vaddr=0x%lx\n", i, phdr.p_type, phdr.p_vaddr);
-
-		if (file_ofs < 0 || file_ofs > file_length(file))
+		/* WSL 전용 */
+		off_t phdr_ofs = ehdr.e_phoff + i * sizeof(struct Phdr);
+		file_seek(file, phdr_ofs);
+		if (file_read(file, &phdr, sizeof phdr) != sizeof phdr)
 			goto done;
-		file_seek(file, file_ofs);
+
+		/* MAC 전용 */
+		// if (file_ofs < 0 || file_ofs > file_length(file))
+		// 	goto done;
+		// file_seek(file, file_ofs);
 
 		if (file_read(file, &phdr, sizeof phdr) != sizeof phdr)
 			goto done;
