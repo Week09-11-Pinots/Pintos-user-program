@@ -56,6 +56,9 @@ tid_t process_create_initd(const char *file_name)
 		return TID_ERROR;
 	strlcpy(fn_copy, file_name, PGSIZE);
 
+    char *save_ptr;
+    strtok_r(file_name, " ", &save_ptr);
+
 	/* Create a new thread to execute FILE_NAME. */
 	tid = thread_create(file_name, PRI_DEFAULT, initd, fn_copy);
 	if (tid == TID_ERROR)
@@ -239,50 +242,21 @@ int process_wait(tid_t child_tid UNUSED)
 	{
 		int data = 1;
 	}
-	for (int i = 0; i < 100000000; i++)
-	{
-		int data = 1;
-	}
-	for (int i = 0; i < 100000000; i++)
-	{
-		int data = 1;
-	}
-	for (int i = 0; i < 100000000; i++)
-	{
-		int data = 1;
-	}
-	for (int i = 0; i < 100000000; i++)
-	{
-		int data = 1;
-	}
-	for (int i = 0; i < 100000000; i++)
-	{
-		int data = 1;
-	}
-	for (int i = 0; i < 100000000; i++)
-	{
-		int data = 1;
-	}
-	for (int i = 0; i < 100000000; i++)
-	{
-		int data = 1;
-	}
-	for (int i = 0; i < 100000000; i++)
-	{
-		int data = 1;
-	}
-	for (int i = 0; i < 100000000; i++)
-	{
-		int data = 1;
-	}
-	for (int i = 0; i < 100000000; i++)
-	{
-		int data = 1;
-	}
-	for (int i = 0; i < 100000000; i++)
-	{
-		int data = 1;
-	}
+	// for (int i = 0; i < 100000000; i++)
+	// {
+	// 	int data = 1;
+	// }
+	// for (int i = 0; i < 100000000; i++)
+	// {
+	// 	int data = 1;
+	// }
+	// for (int i = 0; i < 100000000; i++)
+	// {
+	// 	int data = 1;
+	// }
+
+
+
 	return -1;
 }
 
@@ -444,15 +418,15 @@ load(const char *file_name, struct intr_frame *if_)
 	{
 		struct Phdr phdr;
 
-		off_t phdr_ofs = ehdr.e_phoff + i * sizeof(struct Phdr);
-		file_seek(file, phdr_ofs);
-		if (file_read(file, &phdr, sizeof phdr) != sizeof phdr)
-			goto done;
+		// off_t phdr_ofs = ehdr.e_phoff + i * sizeof(struct Phdr);
+		// file_seek(file, phdr_ofs);
+		// if (file_read(file, &phdr, sizeof phdr) != sizeof phdr)
+		// 	goto done;
 		// printf("i=%d, p_type=%d, p_vaddr=0x%lx\n", i, phdr.p_type, phdr.p_vaddr);
 
-		// if (file_ofs < 0 || file_ofs > file_length(file))
-		// 	goto done;
-		// file_seek(file, file_ofs);
+		if (file_ofs < 0 || file_ofs > file_length(file))
+			goto done;
+		file_seek(file, file_ofs);
 
 		if (file_read(file, &phdr, sizeof phdr) != sizeof phdr)
 			goto done;
