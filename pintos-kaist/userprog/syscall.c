@@ -82,7 +82,6 @@ void syscall_handler(struct intr_frame *f UNUSED)
 		break;
 	case SYS_EXIT:
 		sys_exit(arg1);
-		sys_exit(arg1);
 		break;
 	case SYS_FORK:
 		break;
@@ -111,8 +110,6 @@ void syscall_handler(struct intr_frame *f UNUSED)
 	case SYS_CLOSE:
 		break;
 	default:
-		printf("system call!\n");
-		thread_exit();
 		printf("system call!\n");
 		thread_exit();
 		break;
