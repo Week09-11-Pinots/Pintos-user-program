@@ -27,7 +27,12 @@ int sys_open (const char *file);
  * syscall 명령어는 모델별 레지스터(MSR)의 값을 읽어서 동작합니다.
  * 자세한 내용은 매뉴얼을 참고하세요.
  */
+ * syscall 명령어는 모델별 레지스터(MSR)의 값을 읽어서 동작합니다.
+ * 자세한 내용은 매뉴얼을 참고하세요.
+ */
 
+#define MSR_STAR 0xc0000081			/* Segment selector msr */
+#define MSR_LSTAR 0xc0000082		/* Long mode SYSCALL target */
 #define MSR_STAR 0xc0000081			/* Segment selector msr */
 #define MSR_LSTAR 0xc0000082		/* Long mode SYSCALL target */
 #define MSR_SYSCALL_MASK 0xc0000084 /* Mask for the eflags */
@@ -37,15 +42,23 @@ void syscall_init(void)
 	write_msr(MSR_STAR, ((uint64_t)SEL_UCSEG - 0x10) << 48 |
 							((uint64_t)SEL_KCSEG) << 32);
 	/*시스템 콜 진입점 주소를 MSR_LSTAR에 기록. syscall_entry 는 시스템 콜 진입점, 유저 모드에서
+void syscall_init(void)
+{
+	write_msr(MSR_STAR, ((uint64_t)SEL_UCSEG - 0x10) << 48 |
+							((uint64_t)SEL_KCSEG) << 32);
+	/*시스템 콜 진입점 주소를 MSR_LSTAR에 기록. syscall_entry 는 시스템 콜 진입점, 유저 모드에서
 	시스템 콜을 실행했을 때 커널 모드로 전환 */
 	write_msr(MSR_LSTAR, (uint64_t)syscall_entry);
+	write_msr(MSR_LSTAR, (uint64_t)syscall_entry);
 
+	/* 인터럽트 서비스 루틴은 시스템 엔트리가 유저모드 스택에서 커널모드 스택으로
 	/* 인터럽트 서비스 루틴은 시스템 엔트리가 유저모드 스택에서 커널모드 스택으로
 	전환할때 까지 어떠한 인터럽트도 제공해서는 안된다. 그러므로, 우리는 만드시 FLAG_FL을 마스크 해야 한다.
 	시스템 콜 핸들러 진입 시 유저가 조작할 수 없도록 마스킹할 플래그를 지정한다. 즉, 시스템 콜
 	진입 시 위 플래그들은 자동으로 0이되어, 유저 프로세스가 커널에 영향을 주지 못하게 막는다.
  */
 	write_msr(MSR_SYSCALL_MASK,
+			  FLAG_IF | FLAG_TF | FLAG_DF | FLAG_IOPL | FLAG_AC | FLAG_NT);
 			  FLAG_IF | FLAG_TF | FLAG_DF | FLAG_IOPL | FLAG_AC | FLAG_NT);
 }
 
@@ -68,6 +81,7 @@ void syscall_handler(struct intr_frame *f UNUSED)
 		sys_halt();
 		break;
 	case SYS_EXIT:
+		sys_exit(arg1);
 		sys_exit(arg1);
 		break;
 	case SYS_FORK:
@@ -97,6 +111,8 @@ void syscall_handler(struct intr_frame *f UNUSED)
 	case SYS_CLOSE:
 		break;
 	default:
+		printf("system call!\n");
+		thread_exit();
 		printf("system call!\n");
 		thread_exit();
 		break;

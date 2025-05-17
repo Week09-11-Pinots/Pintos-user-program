@@ -84,7 +84,7 @@ typedef int tid_t;
  * value, triggering the assertion. */
 /* The `elem' member has a dual purpose.  It can be an element in
  * the run queue (thread.c), or it can be an element in a
- * semaphore wait list (synch.c).  It can be used these two ways
+ * semaphore wait list (synch.c).  It can be used these two ways 
  * only because they are mutually exclusive: only a thread in the
  * ready state is on the run queue, whereas only a thread in the
  * blocked state is on a semaphore wait list. */
@@ -105,8 +105,12 @@ struct thread
 	int nice;			// 양보하려는 정도?
 	fixed_t recent_cpu; // CPU를 얼마나 점유했나?
 	struct list_elem all_elem;
+<<<<<<< HEAD
 	
 	struct file *fd_table[MAX_FD];  //파일 디스크럽터 테이블 
+=======
+	int exit_status;
+>>>>>>> main
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
