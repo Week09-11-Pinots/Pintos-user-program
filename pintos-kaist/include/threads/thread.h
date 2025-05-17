@@ -105,12 +105,8 @@ struct thread
 	int nice;			// 양보하려는 정도?
 	fixed_t recent_cpu; // CPU를 얼마나 점유했나?
 	struct list_elem all_elem;
-<<<<<<< HEAD
 	
 	struct file *fd_table[MAX_FD];  //파일 디스크럽터 테이블 
-=======
-	int exit_status;
->>>>>>> main
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
