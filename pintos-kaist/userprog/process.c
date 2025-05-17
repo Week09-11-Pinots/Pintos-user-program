@@ -282,6 +282,22 @@ int process_wait(tid_t child_tid UNUSED)
 	{
 		int data = 1;
 	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
 
 	return -1;
 }
@@ -336,6 +352,17 @@ void process_activate(struct thread *next)
 	/* 인터럽트 처리를 위해 스레드의 커널 스택을 설정합니다. */
 	tss_update(next);
 }
+
+// int find_unused_fd(const char *file){
+// 	struct thread *cur = thread_current();
+
+// 	for(int i=2; i<=MAX_FD; i++ ){
+// 		if(cur->fd_table[i]==NULL){
+// 			cur->fd_table[i]=file;
+// 			return i;
+// 		}
+// 	}
+// }
 
 /* ELF 실행 파일을 로드합니다.
 다음 정의들은 ELF 사양서 [ELF1]에서 가져온 것입니다. */

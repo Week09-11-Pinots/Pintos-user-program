@@ -59,9 +59,12 @@ filesys_done (void) {
  * or if internal memory allocation fails. */
 bool
 filesys_create (const char *name, off_t initial_size) {
+	// printf("FILE NAME :%s\n", name);
 	disk_sector_t inode_sector = 0;
 	struct dir *dir = dir_open_root ();
 	bool success = (dir != NULL
+			&& name !=NULL
+			&& strlen(name)<=14
 			&& free_map_allocate (1, &inode_sector)
 			&& inode_create (inode_sector, initial_size)
 			&& dir_add (dir, name, inode_sector));
@@ -69,6 +72,7 @@ filesys_create (const char *name, off_t initial_size) {
 		free_map_release (inode_sector, 1);
 	dir_close (dir);
 
+	// printf("sucees? :%d\n", success);
 	return success;
 }
 
@@ -77,14 +81,23 @@ filesys_create (const char *name, off_t initial_size) {
  * otherwise.
  * Fails if no file named NAME exists,
  * or if an internal memory allocation fails. */
+/* 주어진 이름을 가진 파일을 연다.
+파일을 여는데 성공하면 새로운 파일을 반환하고, 실패하면 널포인터를 반환.
+name인 파일이 존재하지 않는 경우에, 또는 내부 메모리 할당에 실패할 경우 실패한다.
+*/
 struct file *
 filesys_open (const char *name) {
 	struct dir *dir = dir_open_root ();
 	struct inode *inode = NULL;
+	bool exist=0;
 
 	if (dir != NULL)
-		dir_lookup (dir, name, &inode);
+		exist=dir_lookup (dir, name, &inode);
 	dir_close (dir);
+	
+	if(!exist){
+		return NULL;
+	}
 
 	return file_open (inode);
 }

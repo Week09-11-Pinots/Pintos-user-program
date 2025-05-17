@@ -8,12 +8,16 @@
 #include "threads/flags.h"
 #include "intrinsic.h"
 #include "lib/kernel/console.h"
+#include "filesys/filesys.h"
 
 void syscall_entry(void);
 void syscall_handler(struct intr_frame *);
 static int sys_write(int fd, const void *buffer, unsigned size);
 static void sys_exit(int);
 static void sys_halt();
+bool sys_create(const char *file, unsigned initial_size);
+bool sys_remove(const char *file);
+int sys_open(const char *file);
 
 /* 시스템 콜.
  *
@@ -59,7 +63,7 @@ void syscall_handler(struct intr_frame *f UNUSED)
 	switch (syscall_num)
 	{
 	case SYS_HALT:
-
+		sys_halt();
 		break;
 	case SYS_EXIT:
 		sys_exit(arg1);
@@ -69,17 +73,20 @@ void syscall_handler(struct intr_frame *f UNUSED)
 	case SYS_EXEC:
 		break;
 	case SYS_CREATE:
+		f->R.rax = sys_create(arg1, arg2);
 		break;
 	case SYS_REMOVE:
+		f->R.rax = sys_remove(arg1);
 		break;
 	case SYS_OPEN:
+		f->R.rax = sys_open(arg1);
 		break;
 	case SYS_FILESIZE:
 		break;
 	case SYS_READ:
 		break;
 	case SYS_WRITE:
-		sys_write(arg1, arg2, arg3);
+		f->R.rax = sys_write(arg1, arg2, arg3);
 		break;
 	case SYS_SEEK:
 		break;
@@ -92,6 +99,13 @@ void syscall_handler(struct intr_frame *f UNUSED)
 		thread_exit();
 		break;
 	}
+}
+
+void sys_halt()
+{
+	printf("SYSCALL_HALT \n");
+
+	power_off();
 }
 
 static int sys_write(int fd, const void *buffer, unsigned size)
@@ -112,3 +126,49 @@ static void sys_exit(int status)
 	printf("%s: exit(%d)\n", thread_name(), status);
 	thread_exit();
 }
+
+// 주소값이 유저 영역(0x8048000~0xc0000000)에서 사용하는 주소값인지 확인하는 함수
+void check_address(const uint64_t *addr)
+{
+	struct thread *cur = thread_current();
+
+	if (addr == "" || !(is_user_vaddr(addr)) || pml4_get_page(cur->pml4, addr) == NULL)
+	{
+		sys_exit(-1);
+	}
+}
+
+bool sys_create(const char *file, unsigned initial_size)
+{
+	printf("FILE NAME :%s, INITIAL_SIZE:%s\n", file, initial_size);
+	if (strcmp(file, "") == 0 || file == NULL)
+	{
+		sys_exit(-1);
+	}
+	check_address(file);
+	return filesys_create(file, initial_size);
+}
+
+bool sys_remove(const char *file)
+{
+	return filesys_remove(file);
+}
+
+// int
+// sys_open (const char *file) {
+// 	// printf("FILE NAME :%s\n", file);
+// 	check_address(file);
+// 	if(file==NULL||strcmp(file, "") == 0){
+// 		// printf("FILE IS EMPTY!\n");
+// 		return -1;
+// 	}
+// 	struct file *file_obj= filesys_open(file);
+// 	if(file_obj ==NULL) {
+// 		// printf("FILE %s IS NOT EXIST!\n", file);
+// 		return -1;
+// 	}
+
+// 	return 0;
+// 	// int fd=find_unused_fd(file_obj);
+// 	// return fd;
+// }

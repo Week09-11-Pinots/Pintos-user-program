@@ -29,6 +29,7 @@ typedef int tid_t;
 #define PRI_MIN 0	   /* Lowest priority. */
 #define PRI_DEFAULT 31 /* Default priority. */
 #define PRI_MAX 63	   /* Highest priority. */
+#define MAX_FD 128
 
 /* A kernel thread or user process.
  *
@@ -83,7 +84,7 @@ typedef int tid_t;
  * value, triggering the assertion. */
 /* The `elem' member has a dual purpose.  It can be an element in
  * the run queue (thread.c), or it can be an element in a
- * semaphore wait list (synch.c).  It can be used these two ways 
+ * semaphore wait list (synch.c).  It can be used these two ways
  * only because they are mutually exclusive: only a thread in the
  * ready state is on the run queue, whereas only a thread in the
  * blocked state is on a semaphore wait list. */
@@ -104,11 +105,14 @@ struct thread
 	int nice;			// 양보하려는 정도?
 	fixed_t recent_cpu; // CPU를 얼마나 점유했나?
 	struct list_elem all_elem;
-	int exit_status;
+
+	struct file *fd_table[MAX_FD]; // 파일 디스크럽터 테이블
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4; /* Page map level 4 */
+	int exit_status;
+
 #endif
 #ifdef VM
 	/* Table for whole virtual memory owned by thread. */
