@@ -189,6 +189,8 @@ int process_exec(void *f_name)
 	/* 현재 컨텍스트를 제거합니다. */
 	process_cleanup();
 
+	// memset(&_if, 0, sizeof _if);
+
 	/* 그리고 이진 파일을 로드합니다. */
 	ASSERT(cp_file_name != NULL);
 	success = load(cp_file_name, &_if);
@@ -198,8 +200,7 @@ int process_exec(void *f_name)
 	if (!success)
 		return -1;
 
-	// hex_dump(0, (void *)_if.rsp, 96, true);
-	// hex_dump(_if.rsp, _if.rsp, KERN_BASE - _if.rsp, true);
+	// hex_dump(_if.rsp, _if.rsp, USER_STACK - (uint64_t)_if.rsp, true);
 	/* 프로세스를 전환합니다. */
 	do_iret(&_if);
 	NOT_REACHED();
@@ -234,10 +235,54 @@ int process_wait(tid_t child_tid UNUSED)
 
 	/* XXX: 힌트) pintos는 process_wait(initd)를 호출하면 종료되므로,
 	 * XXX:       process_wait을 구현하기 전까지는 여기에 무한 루프를 넣는 것을 추천합니다. */
-	while (1)
+	for (int i = 0; i < 100000000; i++)
 	{
+		int data = 1;
 	}
-
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
 	return -1;
 }
 
@@ -378,7 +423,7 @@ load(const char *file_name, struct intr_frame *if_)
 	process_activate(thread_current());
 
 	/* 실행 파일을 엽니다. */
-	file = filesys_open(file_name);
+	file = filesys_open(argv[0]);
 	if (file == NULL)
 	{
 		printf("load: %s: open failed\n", file_name);
@@ -473,25 +518,27 @@ load(const char *file_name, struct intr_frame *if_)
 		rsp_arr[i] = if_->rsp;
 		memcpy((void *)if_->rsp, argv[i], strlen(argv[i]) + 1);
 	}
-	if_->rsp = if_->rsp & ~0x7ULL; // 8바이트 패딩 -> 왜 먼저 하지?
-	if_->rsp -= 8;				   // NULL 문자열을 위한 주소 공간, 64비트니까 8바이트 확보
-	*(uint64_t *)if_->rsp = 0;	   // 위 주소공간에 NULL 넣어주기
+
+	while (if_->rsp % 8 != 0)
+	{
+		if_->rsp--;				  // 주소값을 1 내리고
+		*(uint8_t *)if_->rsp = 0; // 데이터에 0 삽입 => 8바이트 저장
+	}
+
+	if_->rsp -= 8; // NULL 문자열을 위한 주소 공간, 64비트니까 8바이트 확보
+	memset(if_->rsp, 0, sizeof(char **));
+
 	for (int i = argc - 1; i >= 0; i--)
 	{
-		if_->rsp -= 8;						// 8바이트만큼 rsp감소
-		*(uint64_t *)if_->rsp = rsp_arr[i]; // rsp가 가리키는 공간에 argv주소 저장
+		if_->rsp -= 8; // 8바이트만큼 rsp감소
+		memcpy(if_->rsp, &rsp_arr[i], sizeof(char **));
 	}
-	char **argv_addr_on_stack = (char **)if_->rsp;
-	// if_->rsp -= 8;										  // 주소는 64비트니까 8바이트 확보
-	// *(uint64_t *)if_->rsp = (uint64_t)argv_addr_on_stack; // 포인터 배열의 시작주소
-	// if_->rsp -= 4;			 // int 형이니까 4바이트 확보
-	// *(int *)if_->rsp = argc; // argc 저장
-	// if_->rsp -= 4;			 // 패딩
-	// *(int *)if_->rsp = 0;	 // 패딩
+
 	if_->rsp -= 8;
-	*(uint64_t *)if_->rsp = 0;
-	if_->R.rsi = argv_addr_on_stack;
+	memset(if_->rsp, 0, sizeof(void *));
+
 	if_->R.rdi = argc;
+	if_->R.rsi = if_->rsp + 8;
 
 	success = true;
 

@@ -104,6 +104,7 @@ struct thread
 	int nice;			// 양보하려는 정도?
 	fixed_t recent_cpu; // CPU를 얼마나 점유했나?
 	struct list_elem all_elem;
+	int exit_status;
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */

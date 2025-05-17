@@ -107,6 +107,7 @@ static int sys_write(int fd, const void *buffer, unsigned size)
 static void sys_exit(int status)
 {
 	struct thread *cur = thread_current();
+	cur->exit_status = status;
 
 	printf("%s: exit(%d)\n", thread_name(), status);
 	thread_exit();
