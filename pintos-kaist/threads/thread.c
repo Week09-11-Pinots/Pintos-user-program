@@ -121,6 +121,8 @@ void thread_init(void)
 	init_thread(initial_thread, "main", PRI_DEFAULT);
 	initial_thread->status = THREAD_RUNNING;
 	initial_thread->tid = allocate_tid();
+
+	
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -588,6 +590,7 @@ init_thread(struct thread *t, const char *name, int priority)
 	ASSERT(name != NULL);
 
 	memset(t, 0, sizeof *t);
+	// memset(t->fd_table, 0, sizeof(t->fd_table));
 	t->status = THREAD_BLOCKED;
 	strlcpy(t->name, name, sizeof t->name);
 	t->tf.rsp = (uint64_t)t + PGSIZE - sizeof(void *);

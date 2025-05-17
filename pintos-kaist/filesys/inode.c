@@ -27,6 +27,9 @@ bytes_to_sectors (off_t size) {
 }
 
 /* In-memory inode. */
+/* inode는 index node의 줄임말입니다. 
+inode는 파일이나 디렉토리에 대한 메타데이터를 갖는 고유 식별자입니다.
+*/
 struct inode {
 	struct list_elem elem;              /* Element in inode list. */
 	disk_sector_t sector;               /* Sector number of disk location. */

@@ -16,6 +16,8 @@ static int sys_write(int fd, const void *buffer, unsigned size);
 static void sys_exit(int);
 static void sys_halt();
 bool sys_create(const char *file, unsigned initial_size);
+bool sys_remove (const char *file) ;
+int sys_open (const char *file);
 
 /* 시스템 콜.
  *
@@ -76,8 +78,10 @@ void syscall_handler(struct intr_frame *f UNUSED)
 		f->R.rax=sys_create(arg1, arg2);
 		break;
 	case SYS_REMOVE:
+		f->R.rax=sys_remove(arg1);
 		break;
 	case SYS_OPEN:
+		// f->R.rax=sys_open(arg1);
 		break;
 	case SYS_FILESIZE:
 		break;
@@ -135,11 +139,33 @@ void check_address(const uint64_t *addr)
 }
 
 bool sys_create(const char *file, unsigned initial_size){
-	// printf("FILE NAME :%s, INITIAL_SIZE:%s\n", file,initial_size);
-	if(file==""||file==NULL) {
+	printf("FILE NAME :%s, INITIAL_SIZE:%s\n", file,initial_size);
+	if(strcmp(file, "") == 0||file==NULL) {
 		sys_exit(-1);
 	}
 	check_address(file);
 	return filesys_create(file, initial_size);
 }
 
+bool
+sys_remove (const char *file) {
+	return filesys_remove(file);
+}
+
+// int
+// sys_open (const char *file) {
+// 	// printf("FILE NAME :%s\n", file);
+// 	check_address(file);
+// 	if(file==NULL||strcmp(file, "") == 0){
+// 		// printf("FILE IS EMPTY!\n");
+// 		return -1;
+// 	}
+// 	struct file *file_obj= filesys_open(file);
+// 	if(file_obj ==NULL) {
+// 		// printf("FILE %s IS NOT EXIST!\n", file);
+// 		return -1;
+// 	}
+
+// 	int fd=find_unused_fd(file_obj);
+// 	return fd;
+// }
