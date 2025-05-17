@@ -7,9 +7,19 @@
 #include "userprog/gdt.h"
 #include "threads/flags.h"
 #include "intrinsic.h"
+// #include "include/threads/init.h"
+// #include "include/lib/kernel/console.h"
+#include "filesys/file.h"
+#include "filesys/filesys.h"
+
 
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
+
+void sys_halt();
+int sys_exit(int status);
+int sys_write(int fd, const void *buffer, unsigned size);
+bool sys_create(const char *file, unsigned initial_size);
 
 /* System call.
  *
@@ -26,6 +36,8 @@ void syscall_handler (struct intr_frame *);
 
 void
 syscall_init (void) {
+
+	// printf("SYSCALL_INIT \n");
 	write_msr(MSR_STAR, ((uint64_t)SEL_UCSEG - 0x10) << 48  |
 			((uint64_t)SEL_KCSEG) << 32);
 	/*시스템 콜 진입점 주소를 MSR_LSTAR에 기록. syscall_entry 는 시스템 콜 진입점, 유저 모드에서 
@@ -39,23 +51,41 @@ syscall_init (void) {
  */
 	write_msr(MSR_SYSCALL_MASK,
 			FLAG_IF | FLAG_TF | FLAG_DF | FLAG_IOPL | FLAG_AC | FLAG_NT);
+
+	// printf("SYSCALL_INIT END!!!!\n");
+
 }
 
 /* The main system call interface */
 void
 syscall_handler (struct intr_frame *f UNUSED) {
 
-	switch (f->R.rax)
+	struct gp_registers regi=f->R;
+	/*
+	1. rdi
+	2. rsi
+	3. rdx
+	4. r10
+	5. r8
+	6. r9
+	*/
+
+	// printf("syscall_handler\n");
+	// printf("%lld\n",regi.rax);
+	switch (regi.rax)
 	{
 	case SYS_HALT:
+		sys_halt();
 		break;
 	case SYS_EXIT:
+		sys_exit(regi.rdi);
 		break;
 	case SYS_FORK:
 		break;
 	case SYS_EXEC:
 		break;
 	case SYS_CREATE:
+		sys_create(regi.rdi, regi.rsi);
 		break;
 	case SYS_REMOVE:
 		break;
@@ -66,6 +96,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	case SYS_READ:
 		break;
 	case SYS_WRITE:
+		sys_write(regi.rdi,regi.rsi,regi.rdx);
 		break;
 	case SYS_SEEK:
 		break;
@@ -79,4 +110,32 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		break;
 	}
 
+}
+
+void sys_halt(){
+	printf("SYSCALL_HALT \n");
+
+	power_off();
+}
+
+int sys_exit(int status){
+	struct thread *curr = thread_current ();
+	curr->exit_status=status;
+	printf ("%s: exit(%d)\n", curr->name,  status);
+	thread_exit();
+}
+
+int sys_write(int fd, const void *buffer, unsigned size){
+	int byte=0;
+	// printf("Write 잘못임?\n");
+	if(fd==1){
+		putbuf(buffer, size);
+		byte=size;
+		return byte;
+	}
+	return -1;
+}
+
+bool sys_create(const char *file, unsigned initial_size){
+	return filesys_create(file, initial_size);
 }

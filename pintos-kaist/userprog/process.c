@@ -18,9 +18,12 @@
 #include "threads/mmu.h"
 #include "threads/vaddr.h"
 #include "intrinsic.h"
+#include "include/lib/string.h"
 #ifdef VM
 #include "vm/vm.h"
 #endif
+
+#define MAX_ARGS 36
 
 static void process_cleanup (void);
 static bool load (const char *file_name, struct intr_frame *if_);
@@ -63,8 +66,8 @@ initd (void *f_name) {
 #ifdef VM
 	supplemental_page_table_init (&thread_current ()->spt);
 #endif
-
 	process_init ();
+
 
 	if (process_exec (f_name) < 0)
 		PANIC("Fail to launch initd\n");
@@ -160,6 +163,7 @@ error:
  * 실패 시 -1을 반환합니다. */
 int
 process_exec (void *f_name) {
+	// printf("PROCESS_EXEC...\n");
 	char *file_name = f_name;
 	bool success;
 
@@ -183,7 +187,9 @@ process_exec (void *f_name) {
 		return -1;
 
 /* 프로세스를 전환합니다. */
+	// printf("DO_IRET\n");
 	do_iret (&_if);
+	// printf("NOT_REACHED\n");
 	NOT_REACHED ();
 }
 
@@ -200,7 +206,22 @@ process_wait (tid_t child_tid UNUSED) {
 
 /* XXX: 힌트) pintos는 process_wait(initd)를 호출하면 종료되므로,
  * XXX:       process_wait을 구현하기 전까지는 여기에 무한 루프를 넣는 것을 추천합니다. */
-	return -1;
+	// for (int i = 0; i < 100000000; i++){
+	// 	int data = 1;
+	// }
+	// while(1){
+
+	// }
+	for (int i = 0; i < 100000000; i++){
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++){
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++){
+		int data = 1;
+	}
+ 	return -1;
 }
 
 /* 프로세스를 종료합니다. 이 함수는 thread_exit()에 의해 호출됩니다. */
@@ -211,8 +232,10 @@ process_exit (void) {
 /* TODO: 여기에 코드를 작성하세요.
  * TODO: 프로세스 종료 메시지를 구현하세요 (project2/process_termination.html 참고).
  * TODO: 우리는 이곳에 프로세스 자원 정리를 구현하는 것을 추천합니다. */
-
+	// printf ("%s: exit(%d)\n", ...);
+	// printf("exit이 실행이안됨\n");
 	process_cleanup ();
+	return 0;
 }
 
 /* 현재 프로세스의 자원을 해제합니다. */
@@ -228,6 +251,7 @@ process_cleanup (void) {
 /* 현재 프로세스의 페이지 디렉터리를 제거하고,
  * 커널 전용 페이지 디렉터리로 전환합니다. */
 	pml4 = curr->pml4;
+	// printf("process_cleanup\n");
 	if (pml4 != NULL) {
 
 /* 여기서의 순서가 매우 중요합니다. 우리는
@@ -236,8 +260,12 @@ process_cleanup (void) {
  * 활성 페이지 디렉터리를 제거하기 전에 커널 전용 페이지 디렉터리로 전환해야 합니다.
  * 그렇지 않으면 현재 활성 페이지 디렉터리가 제거된 것(혹은 초기화된 것)이 될 수 있습니다. */
 		curr->pml4 = NULL;
+		// printf("pml4_activate\n");
 		pml4_activate (NULL);
+		// printf("pml4_destroy\n");
 		pml4_destroy (pml4);
+		// printf("all_done\n");
+		// power_off();
 	}
 }
 
@@ -413,6 +441,55 @@ load (const char *file_name, struct intr_frame *if_) {
 
 /* TODO: 여기에 코드를 작성하세요.
  * TODO: 인자 전달을 구현하세요 (project2/argument_passing.html 참고). */
+	char *token ,*save_ptr,*argv[MAX_ARGS];	
+	int argc=0;
+	char* arg_addr[MAX_ARGS];
+
+	for(token=strtok_r(file_name, " ", &save_ptr); token!=NULL;token = strtok_r (NULL, " ", &save_ptr)){
+		argv[argc++] = token;
+		if (argc >= MAX_ARGS) break;
+	}
+
+	//스택 세팅 
+	for (int i = argc - 1; i >= 0; i--) {
+		size_t len = strlen(argv[i]) + 1; // 반드시 +1!
+		// printf("rsp before: %#x\n",  (unsigned)if_->rsp);
+		if_->rsp -= len;
+		// printf("rsp after: %#x\n", (unsigned) if_->rsp);
+		memcpy(if_->rsp, argv[i], len); // 널 종료 문자까지 복사
+		arg_addr[i] = (char *)if_->rsp;
+		// printf("%#x   argv[%d][...]   \"%s\"   char[%zu]\n", (unsigned)if_->rsp, i, (char *)if_->rsp, len);
+	}
+
+	//8바이트 정렬 
+	size_t pad = if_->rsp % 8;
+	if (pad != 0) {
+		if_->rsp -= pad;
+		*(uint8_t *)if_->rsp = 0;
+		// printf("%#x   word-align   0 (padding)\n", (unsigned)if_->rsp);
+	}
+	
+	// printf("Aligned rsp: 0x%x\n", rsp);
+	
+	// argv 포인터를 스택에 저장.
+	if_->rsp-=8;
+	*(uint64_t *)if_->rsp = 0;
+	// printf("%#x   argv[%d]   0 (NULL)   uintptr_t\n", (unsigned)if_->rsp, argc);
+
+	for (int i = argc - 1; i >= 0; i--) {
+		if_->rsp -= 8;
+		*(uint64_t *)if_->rsp = (uint64_t)arg_addr[i];
+		// printf("%#x   argv[%d]   %#lx   uintptr_t\n", (unsigned)if_->rsp, i, (unsigned long)arg_addr[i]);
+	}
+	if_->rsp-=8;
+	*(uint64_t *)if_->rsp = 0;
+
+	// printf("%#x   return addr   %#lx(dummy)   uintptr_t\n", (unsigned)if_->rsp, (unsigned long)arg_addr[i]);
+	if_->R.rdi = argc;
+	if_->R.rsi = if_->rsp + 8;// (argv[0]의 주소가 저장된 위치)
+	// printf("if_->R.rsi: %#lx\n",if_->R.rsi);
+
+	// rsp &= ~0x7ULL;
 
 	success = true;
 

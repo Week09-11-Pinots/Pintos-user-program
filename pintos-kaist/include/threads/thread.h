@@ -95,6 +95,7 @@ struct thread
 	char name[16];			   /* Name (for debugging purposes). */
 	int priority;			   /* 기부받은 우선순위 */
 	int original_priority;	   /* 원래의 우선순위 */
+	int exit_status;
 
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem; /* List element. */
