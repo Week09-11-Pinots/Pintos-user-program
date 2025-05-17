@@ -81,7 +81,7 @@ void syscall_handler(struct intr_frame *f UNUSED)
 		f->R.rax=sys_remove(arg1);
 		break;
 	case SYS_OPEN:
-		// f->R.rax=sys_open(arg1);
+		f->R.rax=sys_open(arg1);
 		break;
 	case SYS_FILESIZE:
 		break;
@@ -166,6 +166,7 @@ sys_remove (const char *file) {
 // 		return -1;
 // 	}
 
-// 	int fd=find_unused_fd(file_obj);
-// 	return fd;
+// 	return 0;
+// 	// int fd=find_unused_fd(file_obj);
+// 	// return fd;
 // }
