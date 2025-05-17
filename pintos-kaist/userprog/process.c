@@ -56,8 +56,9 @@ tid_t process_create_initd(const char *file_name)
 		return TID_ERROR;
 	strlcpy(fn_copy, file_name, PGSIZE);
 
-    char *save_ptr;
-    strtok_r(file_name, " ", &save_ptr);
+	/* 이 코드를 넣어줘야 thread_name이 file name이 됩니다  */
+	char *save_ptr;
+	strtok_r(file_name, " ", &save_ptr);
 
 	/* Create a new thread to execute FILE_NAME. */
 	tid = thread_create(file_name, PRI_DEFAULT, initd, fn_copy);
@@ -388,6 +389,7 @@ load(const char *file_name, struct intr_frame *if_)
 	char *argv[MAX_ARGS];
 	// int argc = 0;
 	int argc = parse_args(file_name, argv);
+	// strlcpy(thread_current()->name, argv[0], sizeof thread_current()->name);
 	uint64_t rsp_arr[argc];
 
 	/* 페이지 디렉터리를 할당하고 활성화합니다. */
@@ -397,7 +399,7 @@ load(const char *file_name, struct intr_frame *if_)
 	process_activate(thread_current());
 
 	/* 실행 파일을 엽니다. */
-	file = filesys_open(argv[0]);
+	file = filesys_open(file_name);
 	if (file == NULL)
 	{
 		printf("load: %s: open failed\n", file_name);
@@ -452,7 +454,6 @@ load(const char *file_name, struct intr_frame *if_)
 				uint64_t mem_page = phdr.p_vaddr & ~PGMASK;
 				uint64_t page_offset = phdr.p_vaddr & PGMASK;
 				uint32_t read_bytes, zero_bytes;
-				// printf("[LOAD] i=%d, p_vaddr=0x%lx, mem_page=0x%lx\n", i, phdr.p_vaddr, mem_page);
 				if (phdr.p_filesz > 0)
 				{
 					/* Normal segment.
