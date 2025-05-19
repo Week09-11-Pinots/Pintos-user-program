@@ -140,7 +140,7 @@ int sys_exec(char *file_name)
 
 	if (process_exec(fn_copy) == -1)
 	{
-		return -1;
+		sys_exit(-1);
 	}
 
 	NOT_REACHED();
