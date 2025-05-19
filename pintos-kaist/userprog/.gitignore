@@ -43,5 +43,3 @@ core.*
 *.swp
 *.swo
 .vscode/
-
-./Make.vars
