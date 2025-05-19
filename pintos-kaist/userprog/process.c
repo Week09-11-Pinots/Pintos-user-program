@@ -116,9 +116,6 @@ duplicate_pte(uint64_t *pte, void *va, void *aux)
 	void *newpage;
 	bool writable;
 
-	/* printf("dup_pte: va=%p  pte=%p  *pte=%" PRIx64 "\n",
-		va, pte, pte ? *pte : 0);*/
-
 	/* 1. TODO: parent_page가 커널 페이지이면 즉시 반환해야 합니다. */
 	if (is_kernel_vaddr(va))
 		return true;
@@ -279,6 +276,7 @@ int process_wait(tid_t child_tid UNUSED)
 	{
 		int data = 1;
 	}
+#ifdef WSL
 	for (int i = 0; i < 100000000; i++)
 	{
 		int data = 1;
@@ -339,6 +337,7 @@ int process_wait(tid_t child_tid UNUSED)
 	{
 		int data = 1;
 	}
+#endif
 
 	return -1;
 }
@@ -523,16 +522,18 @@ load(const char *file_name, struct intr_frame *if_)
 	{
 		struct Phdr phdr;
 
-		/* WSL 전용 */
+#ifdef WSL
+		// WSL 전용 코드
 		off_t phdr_ofs = ehdr.e_phoff + i * sizeof(struct Phdr);
 		file_seek(file, phdr_ofs);
 		if (file_read(file, &phdr, sizeof phdr) != sizeof phdr)
 			goto done;
-
-		/* MAC 전용 */
-		// if (file_ofs < 0 || file_ofs > file_length(file))
-		// 	goto done;
-		// file_seek(file, file_ofs);
+#else
+		// MAC(기본) 전용 코드
+		if (file_ofs < 0 || file_ofs > file_length(file))
+			goto done;
+		file_seek(file, file_ofs);
+#endif
 
 		if (file_read(file, &phdr, sizeof phdr) != sizeof phdr)
 			goto done;
