@@ -237,7 +237,6 @@ int process_exec(void *f_name)
 	ASSERT(cp_file_name != NULL);
 	success = load(cp_file_name, &_if);
 
-	/* 로드 실패 시 종료합니다. */
 	palloc_free_page(file_name);
 	if (!success)
 		return -1;
@@ -449,9 +448,7 @@ load(const char *file_name, struct intr_frame *if_)
 	int i;
 
 	char *argv[MAX_ARGS];
-	// int argc = 0;
 	int argc = parse_args(file_name, argv);
-	// strlcpy(thread_current()->name, argv[0], sizeof thread_current()->name);
 	uint64_t rsp_arr[argc];
 
 	/* 페이지 디렉터리를 할당하고 활성화합니다. */
@@ -489,7 +486,7 @@ load(const char *file_name, struct intr_frame *if_)
 		if (file_read(file, &phdr, sizeof phdr) != sizeof phdr)
 			goto done;
 #else
-		// MAC(기본) 전용 코드
+		// docker(기본) 전용 코드
 		if (file_ofs < 0 || file_ofs > file_length(file))
 			goto done;
 		file_seek(file, file_ofs);
