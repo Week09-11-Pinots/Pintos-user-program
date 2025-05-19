@@ -12,6 +12,7 @@
 #include "userprog/process.h"
 #include "filesys/file.h"
 #include "filesys/file.h"
+#include "threads/palloc.h"
 
 void syscall_entry(void);
 void syscall_handler(struct intr_frame *);
@@ -25,6 +26,7 @@ int sys_filesize(int fd);
 int sys_read(int fd, void *buffer, unsigned size);
 int find_unused_fd(const char *file);
 static struct file *find_file_by_fd(int fd);
+int sys_exec(char *file_name);
 /* 시스템 콜.
  *
  * 이전에는 시스템 콜 서비스가 인터럽트 핸들러(예: 리눅스의 int 0x80)에 의해 처리되었습니다.
@@ -78,6 +80,7 @@ void syscall_handler(struct intr_frame *f UNUSED)
 		f->R.rax = process_fork((const char *)arg1, f);
 		break;
 	case SYS_EXEC:
+		f->R.rax = sys_exec((void *)arg1);
 		break;
 	case SYS_WAIT:
 		f->R.rax = process_wait((tid_t)arg1);
@@ -121,6 +124,27 @@ void check_address(const uint64_t *addr)
 	{
 		sys_exit(-1);
 	}
+}
+
+int sys_exec(char *file_name)
+{
+	check_address(file_name);
+
+	int size = strlen(file_name) + 1;
+	char *fn_copy = palloc_get_page(PAL_ZERO);
+	if ((fn_copy) == NULL)
+	{
+		sys_exit(-1);
+	}
+	strlcpy(fn_copy, file_name, size);
+
+	if (process_exec(fn_copy) == -1)
+	{
+		return -1;
+	}
+
+	NOT_REACHED();
+	return 0;
 }
 
 void check_buffer(const void *buffer, unsigned size)
