@@ -40,10 +40,7 @@ static void process_init(void)
 	struct thread *current = thread_current();
 	current->fd_table = calloc(MAX_FD, sizeof(struct file *));
 	current->fork_sema = malloc(sizeof(struct semaphore));
-	current->wait_flag = false;
 	sema_init(current->fork_sema, 0);
-	sema_init(&current->wait_sema, 0);
-	list_init(&current->children_list);
 	ASSERT(current->fd_table != NULL);
 }
 
@@ -208,8 +205,6 @@ __do_fork(void *aux)
 	if_.R.rax = 0;
 	process_init();
 
-	list_push_back(&parent->children_list, &current->child_elem); /* 자신을 부모의 자식 리스트에 넣습니다 */
-
 	/* 마침내 새로 생성된 프로세스로 전환합니다. */
 	sema_up(parent->fork_sema); // 동기화 완료, 부모 프로세스 락 해제
 	if (succ)
@@ -283,7 +278,7 @@ int process_wait(tid_t child_tid UNUSED)
 	 * XXX:       process_wait을 구현하기 전까지는 여기에 무한 루프를 넣는 것을 추천합니다. */
 
 	struct thread *cur = thread_current();
-	if (cur->tid == 1 || list_empty(&cur->children_list))
+	if (list_empty(&cur->children_list))
 		return -1;
 
 	struct thread *child = get_my_child(child_tid);
