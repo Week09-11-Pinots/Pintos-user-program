@@ -17,6 +17,7 @@
 #include "threads/thread.h"
 #include "threads/mmu.h"
 #include "threads/vaddr.h"
+#include "threads/synch.h"
 #include "intrinsic.h"
 #ifdef VM
 #include "vm/vm.h"
@@ -37,6 +38,10 @@ static void
 process_init(void)
 {
 	struct thread *current = thread_current();
+	current->fd_table = calloc(MAX_FD, sizeof(struct file *));
+	current->fork_sema = malloc(sizeof(struct semaphore));
+	sema_init(current->fork_sema, 0);
+	ASSERT(current->fd_table != NULL);
 }
 
 /* 첫 번째 사용자 프로그램인 "initd"를 FILE_NAME에서 로드하여 시작합니다.
@@ -87,9 +92,16 @@ initd(void *f_name)
 
 tid_t process_fork(const char *name, struct intr_frame *if_ UNUSED)
 {
-	/* Clone current thread to new thread.*/
-	return thread_create(name,
-						 PRI_DEFAULT, __do_fork, thread_current());
+	struct fork_info *info = malloc(sizeof(struct fork_info));
+	ASSERT(info != NULL);
+	struct thread *parent = thread_current();
+	info->parent = parent;
+	memcpy(&info->parent_if, if_, sizeof(struct intr_frame));
+
+	tid_t child_tid = thread_create(name, PRI_DEFAULT, __do_fork, info);
+
+	sema_down(parent->fork_sema); // 동기화를 위한 sema_down
+	return child_tid;
 }
 
 #ifndef VM
@@ -104,23 +116,36 @@ duplicate_pte(uint64_t *pte, void *va, void *aux)
 	void *newpage;
 	bool writable;
 
+	/* printf("dup_pte: va=%p  pte=%p  *pte=%" PRIx64 "\n",
+		va, pte, pte ? *pte : 0);*/
+
 	/* 1. TODO: parent_page가 커널 페이지이면 즉시 반환해야 합니다. */
+	if (is_kernel_vaddr(va))
+		return true;
 
 	/* 2. 부모의 page map level 4에서 VA를 해석합니다. */
 	parent_page = pml4_get_page(parent->pml4, va);
+	if (parent_page == NULL)
+		return true;
 
 	/* 3. TODO: 자식 프로세스를 위해 새로운 PAL_USER 페이지를 할당하고 결과를
 	 *    TODO: NEWPAGE에 저장해야 합니다. */
+	/* PAL_USER = 유저 풀에서 페이지를 할당해라 */
+	newpage = palloc_get_page(PAL_USER | PAL_ZERO);
+	if (newpage == NULL)
+		return false;
 
 	/* 4. TODO: 부모 페이지를 새 페이지에 복사하고
 	 *    TODO: 부모 페이지가 쓰기 가능한지 여부를 검사합니다.
 	 *    TODO: 결과에 따라 WRITABLE을 설정합니다. */
+	memcpy(newpage, parent_page, PGSIZE);
+	writable = is_writable(pte);
 
 	/* 5. VA 주소에 WRITABLE 권한으로 새 페이지를 자식의 페이지 테이블에 추가합니다. */
-
 	if (!pml4_set_page(current->pml4, va, newpage, writable))
 	{
-		/* 6. TODO: 페이지 삽입 실패 시 에러 핸들링을 해야 합니다. */
+		palloc_free_page(newpage);
+		return false;
 	}
 	return true;
 }
@@ -132,11 +157,12 @@ duplicate_pte(uint64_t *pte, void *va, void *aux)
 static void
 __do_fork(void *aux)
 {
+	struct fork_info *info = aux;
 	struct intr_frame if_;
-	struct thread *parent = (struct thread *)aux;
+	struct thread *parent = info->parent;
 	struct thread *current = thread_current();
 	/* TODO: somehow pass the parent_if. (i.e. process_fork()'s if_) */
-	struct intr_frame *parent_if;
+	struct intr_frame *parent_if = &info->parent_if;
 	bool succ = true;
 
 	/* 1. CPU 컨텍스트를 지역 스택으로 복사합니다. */
@@ -153,6 +179,8 @@ __do_fork(void *aux)
 	if (!supplemental_page_table_copy(&current->spt, &parent->spt))
 		goto error;
 #else
+	if (parent->pml4 == NULL)
+		printf("pml4 is null\n");
 	if (!pml4_for_each(parent->pml4, duplicate_pte, parent))
 		goto error;
 #endif
@@ -160,12 +188,24 @@ __do_fork(void *aux)
 	/* TODO: 이 아래에 코드를 작성해야 합니다.
 	 * TODO: 힌트) 파일 객체를 복제하려면 include/filesys/file.h의 `file_duplicate`를 사용하세요.
 	 * TODO:       이 함수가 부모의 자원을 성공적으로 복제할 때까지 부모는 fork()에서 반환되면 안 됩니다. */
+	/* 부모의 fd_table을 순회하며 복사 */
+	if (parent->fd_table[0] != NULL)
+		current->fd_table[0] = parent->fd_table[0]; // 표준 입력
+	if (parent->fd_table[1] != NULL)
+		current->fd_table[1] = parent->fd_table[1]; // 표준 출력
+	for (int i = 2; i < MAX_FD; i++)
+	{
+		if (parent->fd_table[i] != NULL)
+			current->fd_table[i] = file_duplicate(parent->fd_table[i]);
+	}
 
+	if_.R.rax = 0;
 	process_init();
 
 	/* 마침내 새로 생성된 프로세스로 전환합니다. */
+	sema_up(parent->fork_sema); // 동기화 완료, 부모 프로세스 락 해제
 	if (succ)
-		do_iret(&if_);
+		do_iret(&if_); // 이 임시 인터럽트 프레임의 정보를 가지고 유저 모드로 점프
 error:
 	thread_exit();
 }
@@ -187,13 +227,8 @@ int process_exec(void *f_name)
 	_if.cs = SEL_UCSEG;
 	_if.eflags = FLAG_IF | FLAG_MBS;
 
-	/* 유저 스택 페이지 할당 */
-	// setup_stack(&_if);
-
 	/* 현재 컨텍스트를 제거합니다. */
 	process_cleanup();
-
-	// memset(&_if, 0, sizeof _if);
 
 	/* 그리고 이진 파일을 로드합니다. */
 	ASSERT(cp_file_name != NULL);
@@ -239,72 +274,71 @@ int process_wait(tid_t child_tid UNUSED)
 
 	/* XXX: 힌트) pintos는 process_wait(initd)를 호출하면 종료되므로,
 	 * XXX:       process_wait을 구현하기 전까지는 여기에 무한 루프를 넣는 것을 추천합니다. */
-	for (int i = 0; i < 100000000; i++)
-	{
-		int data = 1;
-	}
-	for (int i = 0; i < 100000000; i++)
-	{
-		int data = 1;
-	}
-	for (int i = 0; i < 100000000; i++)
-	{
-		int data = 1;
-	}
-	for (int i = 0; i < 100000000; i++)
-	{
-		int data = 1;
-	}
-	for (int i = 0; i < 100000000; i++)
-	{
-		int data = 1;
-	}
-	for (int i = 0; i < 100000000; i++)
-	{
-		int data = 1;
-	}
-	for (int i = 0; i < 100000000; i++)
-	{
-		int data = 1;
-	}
-	for (int i = 0; i < 100000000; i++)
-	{
-		int data = 1;
-	}
-	for (int i = 0; i < 100000000; i++)
-	{
-		int data = 1;
-	}
-	for (int i = 0; i < 100000000; i++)
-	{
-		int data = 1;
-	}
-	for (int i = 0; i < 100000000; i++)
-	{
-		int data = 1;
-	}
-	for (int i = 0; i < 100000000; i++)
-	{
-		int data = 1;
-	}
-	for (int i = 0; i < 100000000; i++)
-	{
-		int data = 1;
-	}
-	for (int i = 0; i < 100000000; i++)
-	{
-		int data = 1;
-	}for (int i = 0; i < 100000000; i++)
-	{
-		int data = 1;
-	}
-	for (int i = 0; i < 100000000; i++)
-	{
-		int data = 1;
-	}
-	
 
-
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
 
 	return -1;
 }
@@ -317,6 +351,17 @@ void process_exit(void)
 	/* TODO: 여기에 코드를 작성하세요.
 	 * TODO: 프로세스 종료 메시지를 구현하세요 (project2/process_termination.html 참고).
 	 * TODO: 우리는 이곳에 프로세스 자원 정리를 구현하는 것을 추천합니다. */
+	/* fd 테이블 정리 */
+	if (curr->fd_table != NULL)
+	{
+		for (int i = 0; i < MAX_FD; i++)
+		{
+			if (curr->fd_table[i] != NULL)
+				file_close(curr->fd_table[i]); // 각 파일들 닫아주기
+		}
+		free(curr->fd_table);
+		curr->fd_table = NULL;
+	}
 
 	process_cleanup();
 }
@@ -346,7 +391,6 @@ process_cleanup(void)
 		curr->pml4 = NULL;
 		pml4_activate(NULL);
 		pml4_destroy(pml4);
-		// power_off();
 	}
 }
 
@@ -363,7 +407,7 @@ void process_activate(struct thread *next)
 
 // int find_unused_fd(const char *file){
 // 	struct thread *cur = thread_current();
-	
+
 // 	for(int i=2; i<=MAX_FD; i++ ){
 // 		if(cur->fd_table[i]==NULL){
 // 			cur->fd_table[i]=file;
@@ -371,8 +415,6 @@ void process_activate(struct thread *next)
 // 		}
 // 	}
 // }
-
-
 
 /* ELF 실행 파일을 로드합니다.
 다음 정의들은 ELF 사양서 [ELF1]에서 가져온 것입니다. */
@@ -481,15 +523,16 @@ load(const char *file_name, struct intr_frame *if_)
 	{
 		struct Phdr phdr;
 
-		// off_t phdr_ofs = ehdr.e_phoff + i * sizeof(struct Phdr);
-		// file_seek(file, phdr_ofs);
-		// if (file_read(file, &phdr, sizeof phdr) != sizeof phdr)
-		// 	goto done;
-		// printf("i=%d, p_type=%d, p_vaddr=0x%lx\n", i, phdr.p_type, phdr.p_vaddr);
-
-		if (file_ofs < 0 || file_ofs > file_length(file))
+		/* WSL 전용 */
+		off_t phdr_ofs = ehdr.e_phoff + i * sizeof(struct Phdr);
+		file_seek(file, phdr_ofs);
+		if (file_read(file, &phdr, sizeof phdr) != sizeof phdr)
 			goto done;
-		file_seek(file, file_ofs);
+
+		/* MAC 전용 */
+		// if (file_ofs < 0 || file_ofs > file_length(file))
+		// 	goto done;
+		// file_seek(file, file_ofs);
 
 		if (file_read(file, &phdr, sizeof phdr) != sizeof phdr)
 			goto done;

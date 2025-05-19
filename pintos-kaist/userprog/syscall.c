@@ -9,6 +9,7 @@
 #include "intrinsic.h"
 #include "lib/kernel/console.h"
 #include "filesys/filesys.h"
+#include "userprog/process.h"
 
 void syscall_entry(void);
 void syscall_handler(struct intr_frame *);
@@ -16,8 +17,8 @@ static int sys_write(int fd, const void *buffer, unsigned size);
 static void sys_exit(int);
 static void sys_halt();
 bool sys_create(const char *file, unsigned initial_size);
-bool sys_remove (const char *file) ;
-int sys_open (const char *file);
+bool sys_remove(const char *file);
+int sys_open(const char *file);
 
 /* 시스템 콜.
  *
@@ -60,8 +61,6 @@ void syscall_handler(struct intr_frame *f UNUSED)
 	uint64_t arg5 = f->R.r8;
 	uint64_t arg6 = f->R.r9;
 
-	
-
 	switch (syscall_num)
 	{
 	case SYS_HALT:
@@ -71,24 +70,27 @@ void syscall_handler(struct intr_frame *f UNUSED)
 		sys_exit(arg1);
 		break;
 	case SYS_FORK:
+		f->R.rax = process_fork((const char *)arg1, f);
 		break;
 	case SYS_EXEC:
 		break;
+	case SYS_WAIT:
+		break;
 	case SYS_CREATE:
-		f->R.rax=sys_create(arg1, arg2);
+		f->R.rax = sys_create(arg1, arg2);
 		break;
 	case SYS_REMOVE:
-		f->R.rax=sys_remove(arg1);
+		f->R.rax = sys_remove(arg1);
 		break;
 	case SYS_OPEN:
-		f->R.rax=sys_open(arg1);
+		// f->R.rax = sys_open(arg1);
 		break;
 	case SYS_FILESIZE:
 		break;
 	case SYS_READ:
 		break;
 	case SYS_WRITE:
-		f->R.rax=sys_write(arg1, arg2, arg3);
+		f->R.rax = sys_write(arg1, arg2, arg3);
 		break;
 	case SYS_SEEK:
 		break;
@@ -103,7 +105,8 @@ void syscall_handler(struct intr_frame *f UNUSED)
 	}
 }
 
-void sys_halt(){
+void sys_halt()
+{
 	printf("SYSCALL_HALT \n");
 
 	power_off();
@@ -129,26 +132,29 @@ static void sys_exit(int status)
 }
 
 // 주소값이 유저 영역(0x8048000~0xc0000000)에서 사용하는 주소값인지 확인하는 함수
-void check_address(const uint64_t *addr)	
+void check_address(const uint64_t *addr)
 {
 	struct thread *cur = thread_current();
-	
-	if (addr == "" || !(is_user_vaddr(addr)) || pml4_get_page(cur->pml4, addr) == NULL) {
+
+	if (addr == "" || !(is_user_vaddr(addr)) || pml4_get_page(cur->pml4, addr) == NULL)
+	{
 		sys_exit(-1);
 	}
 }
 
-bool sys_create(const char *file, unsigned initial_size){
-	printf("FILE NAME :%s, INITIAL_SIZE:%s\n", file,initial_size);
-	if(strcmp(file, "") == 0||file==NULL) {
+bool sys_create(const char *file, unsigned initial_size)
+{
+	printf("FILE NAME :%s, INITIAL_SIZE:%s\n", file, initial_size);
+	if (strcmp(file, "") == 0 || file == NULL)
+	{
 		sys_exit(-1);
 	}
 	check_address(file);
 	return filesys_create(file, initial_size);
 }
 
-bool
-sys_remove (const char *file) {
+bool sys_remove(const char *file)
+{
 	return filesys_remove(file);
 }
 
