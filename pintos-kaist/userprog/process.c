@@ -32,10 +32,10 @@ static void initd(void *f_name);
 static void __do_fork(void *);
 static int parse_args(char *, char *[]);
 static bool setup_stack(struct intr_frame *if_);
+static bool is_my_child(tid_t tid);
 
 /* General process initializer for initd and other process. */
-static void
-process_init(void)
+static void process_init(void)
 {
 	struct thread *current = thread_current();
 	current->fd_table = calloc(MAX_FD, sizeof(struct file *));
@@ -280,9 +280,26 @@ int process_wait(tid_t child_tid UNUSED)
 	/* XXX: 힌트) pintos는 process_wait(initd)를 호출하면 종료되므로,
 	 * XXX:       process_wait을 구현하기 전까지는 여기에 무한 루프를 넣는 것을 추천합니다. */
 
+	if (!is_my_child(child_tid))
+		return -1;
+
 	timer_msleep(3000);
 
 	return -1;
+}
+
+/* 자신의 자식 리스트를 순회하며 인자로 받은 tid가 자신의 자식이 맞는지 확인합니다 */
+static bool is_my_child(tid_t tid)
+{
+	struct list_elem *e;
+	struct thread *cur = thread_current();
+	for (e = list_begin(&cur->children_list); e != list_end(&cur->children_list); e = list_next(e))
+	{
+		struct thread *child = list_entry(e, struct thread, child_elem);
+		if (child->tid == tid)
+			return true;
+	}
+	return false;
 }
 
 /* 프로세스를 종료합니다. 이 함수는 thread_exit()에 의해 호출됩니다. */
