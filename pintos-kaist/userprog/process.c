@@ -82,7 +82,8 @@ initd(void *f_name)
 
 	process_init();
 
-	if (process_exec(f_name) < 0){
+	if (process_exec(f_name) < 0)
+	{
 		PANIC("Fail to launch initd\n");
 	}
 	NOT_REACHED();
@@ -116,9 +117,6 @@ duplicate_pte(uint64_t *pte, void *va, void *aux)
 	void *parent_page;
 	void *newpage;
 	bool writable;
-
-	/* printf("dup_pte: va=%p  pte=%p  *pte=%" PRIx64 "\n",
-		va, pte, pte ? *pte : 0);*/
 
 	/* 1. TODO: parent_page가 커널 페이지이면 즉시 반환해야 합니다. */
 	if (is_kernel_vaddr(va))
@@ -280,66 +278,68 @@ int process_wait(tid_t child_tid UNUSED)
 	{
 		int data = 1;
 	}
-	// for (int i = 0; i < 100000000; i++)
-	// {
-	// 	int data = 1;
-	// }
-	// for (int i = 0; i < 100000000; i++)
-	// {
-	// 	int data = 1;
-	// }
-	// for (int i = 0; i < 100000000; i++)
-	// {
-	// 	int data = 1;
-	// }
-	// for (int i = 0; i < 100000000; i++)
-	// {
-	// 	int data = 1;
-	// }
-	// for (int i = 0; i < 100000000; i++)
-	// {
-	// 	int data = 1;
-	// }
-	// for (int i = 0; i < 100000000; i++)
-	// {
-	// 	int data = 1;
-	// }
-	// for (int i = 0; i < 100000000; i++)
-	// {
-	// 	int data = 1;
-	// }
-	// for (int i = 0; i < 100000000; i++)
-	// {
-	// 	int data = 1;
-	// }
-	// for (int i = 0; i < 100000000; i++)
-	// {
-	// 	int data = 1;
-	// }
-	// for (int i = 0; i < 100000000; i++)
-	// {
-	// 	int data = 1;
-	// }
-	// for (int i = 0; i < 100000000; i++)
-	// {
-	// 	int data = 1;
-	// }
-	// for (int i = 0; i < 100000000; i++)
-	// {
-	// 	int data = 1;
-	// }
-	// for (int i = 0; i < 100000000; i++)
-	// {
-	// 	int data = 1;
-	// }
-	// for (int i = 0; i < 100000000; i++)
-	// {
-	// 	int data = 1;
-	// }
-	// for (int i = 0; i < 100000000; i++)
-	// {
-	// 	int data = 1;
-	// }
+#ifdef WSL
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+	for (int i = 0; i < 100000000; i++)
+	{
+		int data = 1;
+	}
+#endif
 
 	return -1;
 }
@@ -405,7 +405,6 @@ void process_activate(struct thread *next)
 	/* 인터럽트 처리를 위해 스레드의 커널 스택을 설정합니다. */
 	tss_update(next);
 }
-
 
 /* ELF 실행 파일을 로드합니다.
 다음 정의들은 ELF 사양서 [ELF1]에서 가져온 것입니다. */
@@ -514,16 +513,18 @@ load(const char *file_name, struct intr_frame *if_)
 	{
 		struct Phdr phdr;
 
-		/* WSL 전용 */
-		// off_t phdr_ofs = ehdr.e_phoff + i * sizeof(struct Phdr);
-		// file_seek(file, phdr_ofs);
-		// if (file_read(file, &phdr, sizeof phdr) != sizeof phdr)
-		// 	goto done;
-
-		/* MAC 전용 */
+#ifdef WSL
+		// WSL 전용 코드
+		off_t phdr_ofs = ehdr.e_phoff + i * sizeof(struct Phdr);
+		file_seek(file, phdr_ofs);
+		if (file_read(file, &phdr, sizeof phdr) != sizeof phdr)
+			goto done;
+#else
+		// MAC(기본) 전용 코드
 		if (file_ofs < 0 || file_ofs > file_length(file))
 			goto done;
 		file_seek(file, file_ofs);
+#endif
 
 		if (file_read(file, &phdr, sizeof phdr) != sizeof phdr)
 			goto done;
