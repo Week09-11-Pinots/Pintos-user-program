@@ -111,11 +111,11 @@ struct thread
 
 	struct list children_list;
 	struct list_elem child_elem;
+	int exit_status;
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4; /* Page map level 4 */
-	int exit_status;
 
 #endif
 #ifdef VM
