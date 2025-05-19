@@ -11,6 +11,7 @@
 #include "filesys/filesys.h"
 #include "userprog/process.h"
 #include "filesys/file.h"
+#include "filesys/file.h"
 
 void syscall_entry(void);
 void syscall_handler(struct intr_frame *);
@@ -21,8 +22,9 @@ bool sys_create(const char *file, unsigned initial_size);
 bool sys_remove(const char *file);
 int sys_open(const char *file);
 int sys_filesize(int fd);
-int read(int fd, void *buffer, unsigned size);
-
+int sys_read(int fd, void *buffer, unsigned size);
+int find_unused_fd(const char *file);
+static struct file *find_file_by_fd(int fd);
 /* 시스템 콜.
  *
  * 이전에는 시스템 콜 서비스가 인터럽트 핸들러(예: 리눅스의 int 0x80)에 의해 처리되었습니다.
@@ -51,6 +53,7 @@ void syscall_init(void)
  */
 	write_msr(MSR_SYSCALL_MASK,
 			  FLAG_IF | FLAG_TF | FLAG_DF | FLAG_IOPL | FLAG_AC | FLAG_NT);
+
 }
 
 /* The main system call interface */
@@ -216,13 +219,17 @@ int sys_filesize(int fd)
 	return size;
 }
 
-int sys_read(int fd, void *buffer, unsigned size)
-{
-
+int sys_read(int fd, void *buffer, unsigned size) {
+	
 	if (size == 0)
 		return 0;
 
-	check_address(buffer);
+	for (size_t i = 0; i < size; i++) {
+		uint8_t *addr = (uint8_t *)buffer + i;
+		if (!is_user_vaddr(addr) || pml4_get_page(thread_current()->pml4, addr) == NULL)
+			sys_exit(-1);
+	}
+
 	struct thread *cur = thread_current();
 
 	if (fd < 0 || fd >= MAX_FD)
@@ -277,6 +284,6 @@ int sys_open(const char *file)
 	{
 		return -1;
 	}
-	int fd=find_unused_fd(file_obj);
+	int fd = find_unused_fd(file_obj);
 	return fd;
 }
