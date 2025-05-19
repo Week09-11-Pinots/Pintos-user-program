@@ -588,8 +588,6 @@ init_thread(struct thread *t, const char *name, int priority)
 	ASSERT(name != NULL);
 
 	memset(t, 0, sizeof *t);
-	// t->fd_table = calloc(MAX_FD, sizeof(struct file *));
-	memset(t->fd_table, 0, sizeof(t->fd_table));
 	t->status = THREAD_BLOCKED;
 	strlcpy(t->name, name, sizeof t->name);
 	t->tf.rsp = (uint64_t)t + PGSIZE - sizeof(void *);
