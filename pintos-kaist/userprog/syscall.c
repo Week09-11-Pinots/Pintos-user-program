@@ -19,6 +19,8 @@ static void sys_halt();
 bool sys_create(const char *file, unsigned initial_size);
 bool sys_remove(const char *file);
 int sys_open(const char *file);
+int sys_filesize(int fd);
+int read(int fd, void *buffer, unsigned size);
 
 /* 시스템 콜.
  *
@@ -86,8 +88,11 @@ void syscall_handler(struct intr_frame *f UNUSED)
 		f->R.rax = sys_open(arg1);
 		break;
 	case SYS_FILESIZE:
+		printf("[syscall] SYS_FILESIZE called (fd: %ld)\n", arg1);
+		f->R.rax = sys_filesize(arg1);
 		break;
 	case SYS_READ:
+		f->R.rax = sys_read(arg1, arg2, arg3);
 		break;
 	case SYS_WRITE:
 		f->R.rax = sys_write(arg1, arg2, arg3);
@@ -151,6 +156,60 @@ bool sys_remove(const char *file)
 	return filesys_remove(file);
 }
 
+int sys_filesize(int fd)
+{
+	// 현재 스레드의 fd_table에서 해당 fd에 대응되는 file 구조체를 가져온다
+	struct thread *cur = thread_current();
+
+	//fd가 음수거나 MAX_FD 초과인 경우
+	if (fd < 0 || fd >= MAX_FD) {
+		return -1;
+	}
+
+	// 파일 객체 가져오기
+	struct file *file_obj = cur->fd_table[fd];
+	if (file_obj == NULL) {
+		return -1;
+	}
+
+	off_t size = file_length(file_obj);
+	printf("[sys_filesize] file length = %d\n", size);
+	return size;
+}
+
+int sys_read(int fd, void *buffer, unsigned size) {
+	
+	printf("[sys_read] called: fd=%d, size=%u\n", fd, size);
+
+	if (size == 0)
+		return 0;
+
+	check_address(buffer);
+	struct thread *cur = thread_current();
+
+	if (fd < 0 || fd >= MAX_FD) {
+		return -1;
+	}
+
+	// stdin 처리
+	if (fd == 0) {
+		for (unsigned i = 0; i < size; i++) {
+			((char *)buffer)[i] = input_getc();
+		}
+		return size;
+	}
+
+	struct file *file_obj = cur->fd_table[fd];
+	if (file_obj == NULL) {
+		return -1;
+	}
+
+	//파일 읽기
+	int bytes_read = file_read(file_obj, buffer, size);
+	return bytes_read;
+}
+
+
 int find_unused_fd(const char *file){
 	struct thread *cur = thread_current();
 	
@@ -173,6 +232,4 @@ sys_open (const char *file) {
 		return -1;
 	}
 
-	int fd=find_unused_fd(file_obj);
-	return fd;
 }
