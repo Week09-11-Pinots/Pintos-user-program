@@ -105,6 +105,7 @@ void syscall_handler(struct intr_frame *f UNUSED)
 	case SYS_TELL:
 		break;
 	case SYS_CLOSE:
+		sys_close(arg1);
 		break;
 	default:
 		thread_exit();
@@ -286,4 +287,13 @@ int sys_open(const char *file)
 	}
 	int fd = find_unused_fd(file_obj);
 	return fd;
+}
+
+void
+sys_close (int fd) {
+
+	struct thread *curr=thread_current();
+	struct file **fdt=curr->fd_table;
+	if(fd<2 || fd >=MAX_FD) return NULL;
+	fdt[fd]=NULL;
 }
