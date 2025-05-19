@@ -590,7 +590,8 @@ init_thread(struct thread *t, const char *name, int priority)
 	ASSERT(name != NULL);
 
 	memset(t, 0, sizeof *t);
-	// memset(t->fd_table, 0, sizeof(t->fd_table));
+	// t->fd_table = calloc(MAX_FD, sizeof(struct file *));
+	memset(t->fd_table, 0, sizeof(t->fd_table));
 	t->status = THREAD_BLOCKED;
 	strlcpy(t->name, name, sizeof t->name);
 	t->tf.rsp = (uint64_t)t + PGSIZE - sizeof(void *);
@@ -779,7 +780,7 @@ schedule(void)
 		if (curr && curr->status == THREAD_DYING && curr != initial_thread)
 		{
 			ASSERT(curr != next);
-			list_insert_ordered(&destruction_req,&curr->elem, compare_priority, NULL);
+			list_push_back(&destruction_req, &curr->elem);
 		}
 
 		/* 스레드를 전환하기 전에, 현재 실행 중인 스레드의 정보를 먼저 저장합니다. */

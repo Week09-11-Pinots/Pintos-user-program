@@ -29,7 +29,8 @@ typedef int tid_t;
 #define PRI_MIN 0	   /* Lowest priority. */
 #define PRI_DEFAULT 31 /* Default priority. */
 #define PRI_MAX 63	   /* Highest priority. */
-#define MAX_FD 128
+// #define MAX_FD 128
+#define MAX_FD 32
 
 /* A kernel thread or user process.
  *
@@ -107,6 +108,7 @@ struct thread
 	struct list_elem all_elem;
 	
 	struct file *fd_table[MAX_FD];  //파일 디스크럽터 테이블 
+	// struct file **fd_table;  //파일 디스크럽터 테이블 
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */

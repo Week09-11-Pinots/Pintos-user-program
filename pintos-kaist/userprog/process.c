@@ -77,8 +77,9 @@ initd(void *f_name)
 
 	process_init();
 
-	if (process_exec(f_name) < 0)
+	if (process_exec(f_name) < 0){
 		PANIC("Fail to launch initd\n");
+	}
 	NOT_REACHED();
 }
 
@@ -361,16 +362,6 @@ void process_activate(struct thread *next)
 	tss_update(next);
 }
 
-// int find_unused_fd(const char *file){
-// 	struct thread *cur = thread_current();
-	
-// 	for(int i=2; i<=MAX_FD; i++ ){
-// 		if(cur->fd_table[i]==NULL){
-// 			cur->fd_table[i]=file;
-// 			return i;
-// 		}
-// 	}
-// }
 
 
 
