@@ -274,7 +274,7 @@ int process_wait(tid_t child_tid UNUSED)
 	/* XXX: 힌트) pintos는 process_wait(initd)를 호출하면 종료되므로,
 	 * XXX:       process_wait을 구현하기 전까지는 여기에 무한 루프를 넣는 것을 추천합니다. */
 
-	timer_msleep(2000);
+	timer_msleep(3000);
 
 	return -1;
 }

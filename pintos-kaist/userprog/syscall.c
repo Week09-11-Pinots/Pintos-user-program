@@ -10,6 +10,7 @@
 #include "lib/kernel/console.h"
 #include "filesys/filesys.h"
 #include "userprog/process.h"
+#include "filesys/file.h"
 
 void syscall_entry(void);
 void syscall_handler(struct intr_frame *);
@@ -108,29 +109,6 @@ void syscall_handler(struct intr_frame *f UNUSED)
 	}
 }
 
-void sys_halt()
-{
-	power_off();
-}
-
-static int sys_write(int fd, const void *buffer, unsigned size)
-{
-	if (fd == 1)
-	{
-		putbuf(buffer, size);
-		return size;
-	}
-	return -1;
-}
-
-static void sys_exit(int status)
-{
-	struct thread *cur = thread_current();
-	cur->exit_status = status;
-
-	printf("%s: exit(%d)\n", thread_name(), status);
-	thread_exit();
-}
 
 // 주소값이 유저 영역(0x8048000~0xc0000000)에서 사용하는 주소값인지 확인하는 함수
 void check_address(const uint64_t *addr)
@@ -141,6 +119,64 @@ void check_address(const uint64_t *addr)
 	{
 		sys_exit(-1);
 	}
+}
+
+void check_buffer(const void *buffer, unsigned size) {
+    uint8_t *start = (uint8_t *)pg_round_down(buffer);
+    uint8_t *end = (uint8_t *)pg_round_down(buffer + size - 1);
+    struct thread *cur = thread_current();
+    
+    for (uint8_t *addr = start; addr <= end; addr += PGSIZE) {
+        if (!is_user_vaddr(addr) || pml4_get_page(cur->pml4, addr) == NULL) {
+            // printf("Invalid page address: %p\n", addr);
+            sys_exit(-1);
+        }
+    }
+}
+
+
+struct file*
+process_get_file(int fd){
+	struct thread *cur = thread_current();
+
+	if (fd < 2 || fd > MAX_FD) return NULL;
+
+	return cur->fd_table[fd];
+}
+
+
+void sys_halt()
+{
+	power_off();
+}
+
+
+
+static int sys_write(int fd, const void *buffer, unsigned size)
+{
+	// printf("buffer ? : %p\n", buffer);
+	check_buffer(buffer,size);
+	
+	if (fd == 1)
+	{
+		putbuf(buffer, size);
+		return size;
+	}
+	struct file *f = process_get_file(fd);
+	if (f==NULL) return -1;
+
+	int bytes_written = file_write(f, buffer, size);
+	return bytes_written;
+	
+}
+
+static void sys_exit(int status)
+{
+	struct thread *cur = thread_current();
+	cur->exit_status = status;
+
+	printf("%s: exit(%d)\n", thread_name(), status);
+	thread_exit();
 }
 
 bool sys_create(const char *file, unsigned initial_size)
@@ -241,4 +277,6 @@ int sys_open(const char *file)
 	{
 		return -1;
 	}
+	int fd=find_unused_fd(file_obj);
+	return fd;
 }
