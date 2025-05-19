@@ -11,6 +11,7 @@
 #include "filesys/filesys.h"
 #include "userprog/process.h"
 #include "filesys/file.h"
+#include "threads/palloc.h"
 
 void syscall_entry(void);
 void syscall_handler(struct intr_frame *);
@@ -25,6 +26,7 @@ int sys_read(int fd, void *buffer, unsigned size);
 int find_unused_fd(const char *file);
 void sys_seek(int fd, unsigned position);
 unsigned sys_tell(int fd);
+void check_buffer(const void *buffer, unsigned size);
 
 /* 시스템 콜.
  *
@@ -127,6 +129,22 @@ void check_address(const uint64_t *addr)
 	}
 }
 
+void check_buffer(const void *buffer, unsigned size)
+{
+	uint8_t *start = (uint8_t *)pg_round_down(buffer);
+	uint8_t *end = (uint8_t *)pg_round_down(buffer + size - 1);
+	struct thread *cur = thread_current();
+
+	for (uint8_t *addr = start; addr <= end; addr += PGSIZE)
+	{
+		if (!is_user_vaddr(addr) || pml4_get_page(cur->pml4, addr) == NULL)
+		{
+			// printf("Invalid page address: %p\n", addr);
+			sys_exit(-1);
+		}
+	}
+}
+
 int sys_exec(char *file_name)
 {
 	check_address(file_name);
@@ -146,21 +164,6 @@ int sys_exec(char *file_name)
 
 	NOT_REACHED();
 	return 0;
-}
-
-struct file *
-process_get_file(int fd)
-{
-	struct thread *cur = thread_current();
-
-	for (uint8_t *addr = start; addr <= end; addr += PGSIZE)
-	{
-		if (!is_user_vaddr(addr) || pml4_get_page(cur->pml4, addr) == NULL)
-		{
-			// printf("Invalid page address: %p\n", addr);
-			sys_exit(-1);
-		}
-	}
 }
 
 struct file *
