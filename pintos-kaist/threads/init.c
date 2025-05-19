@@ -126,6 +126,7 @@ int main(void)
 	/* 13. 옵션에 따라 자동 종료 */
 	if (power_off_when_done)
 		power_off();
+	power_off();
 	/* 14. main()은 NO_RETURN → 종료 시 명시적으로 thread_exit 호출 */
 	thread_exit();
 }

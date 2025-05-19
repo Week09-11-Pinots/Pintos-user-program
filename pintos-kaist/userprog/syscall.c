@@ -11,7 +11,7 @@
 #include "filesys/filesys.h"
 #include "userprog/process.h"
 #include "filesys/file.h"
-#include "filesys/file.h"
+#include "threads/palloc.h"
 
 void syscall_entry(void);
 void syscall_handler(struct intr_frame *);
@@ -24,7 +24,10 @@ int sys_open(const char *file);
 int sys_filesize(int fd);
 int sys_read(int fd, void *buffer, unsigned size);
 int find_unused_fd(const char *file);
-static struct file *find_file_by_fd(int fd);
+void sys_seek(int fd, unsigned position);
+unsigned sys_tell(int fd);
+void check_buffer(const void *buffer, unsigned size);
+
 /* 시스템 콜.
  *
  * 이전에는 시스템 콜 서비스가 인터럽트 핸들러(예: 리눅스의 int 0x80)에 의해 처리되었습니다.
@@ -53,7 +56,6 @@ void syscall_init(void)
  */
 	write_msr(MSR_SYSCALL_MASK,
 			  FLAG_IF | FLAG_TF | FLAG_DF | FLAG_IOPL | FLAG_AC | FLAG_NT);
-
 }
 
 /* The main system call interface */
@@ -79,8 +81,10 @@ void syscall_handler(struct intr_frame *f UNUSED)
 		f->R.rax = process_fork((const char *)arg1, f);
 		break;
 	case SYS_EXEC:
+		f->R.rax = sys_exec((void *)arg1);
 		break;
 	case SYS_WAIT:
+		f->R.rax = process_wait((tid_t)arg1);
 		break;
 	case SYS_CREATE:
 		f->R.rax = sys_create(arg1, arg2);
@@ -101,8 +105,10 @@ void syscall_handler(struct intr_frame *f UNUSED)
 		f->R.rax = sys_write(arg1, arg2, arg3);
 		break;
 	case SYS_SEEK:
+		sys_seek(arg1, arg2);
 		break;
 	case SYS_TELL:
+		f->R.rax = sys_tell(arg1);
 		break;
 	case SYS_CLOSE:
 		sys_close(arg1);
@@ -112,7 +118,6 @@ void syscall_handler(struct intr_frame *f UNUSED)
 		break;
 	}
 }
-
 
 // 주소값이 유저 영역(0x8048000~0xc0000000)에서 사용하는 주소값인지 확인하는 함수
 void check_address(const uint64_t *addr)
@@ -125,53 +130,75 @@ void check_address(const uint64_t *addr)
 	}
 }
 
-void check_buffer(const void *buffer, unsigned size) {
-    uint8_t *start = (uint8_t *)pg_round_down(buffer);
-    uint8_t *end = (uint8_t *)pg_round_down(buffer + size - 1);
-    struct thread *cur = thread_current();
-    
-    for (uint8_t *addr = start; addr <= end; addr += PGSIZE) {
-        if (!is_user_vaddr(addr) || pml4_get_page(cur->pml4, addr) == NULL) {
-            // printf("Invalid page address: %p\n", addr);
-            sys_exit(-1);
-        }
-    }
-}
-
-
-struct file*
-process_get_file(int fd){
+void check_buffer(const void *buffer, unsigned size)
+{
+	uint8_t *start = (uint8_t *)pg_round_down(buffer);
+	uint8_t *end = (uint8_t *)pg_round_down(buffer + size - 1);
 	struct thread *cur = thread_current();
 
-	if (fd < 2 || fd > MAX_FD) return NULL;
+	for (uint8_t *addr = start; addr <= end; addr += PGSIZE)
+	{
+		if (!is_user_vaddr(addr) || pml4_get_page(cur->pml4, addr) == NULL)
+		{
+			// printf("Invalid page address: %p\n", addr);
+			sys_exit(-1);
+		}
+	}
+}
+
+int sys_exec(char *file_name)
+{
+	check_address(file_name);
+
+	int size = strlen(file_name) + 1;
+	char *fn_copy = palloc_get_page(PAL_ZERO);
+	if ((fn_copy) == NULL)
+	{
+		sys_exit(-1);
+	}
+	strlcpy(fn_copy, file_name, size);
+
+	if (process_exec(fn_copy) == -1)
+	{
+		sys_exit(-1);
+	}
+
+	NOT_REACHED();
+	return 0;
+}
+
+struct file *
+process_get_file(int fd)
+{
+	struct thread *cur = thread_current();
+
+	if (fd < 2 || fd > MAX_FD)
+		return NULL;
 
 	return cur->fd_table[fd];
 }
-
 
 void sys_halt()
 {
 	power_off();
 }
 
-
-
 static int sys_write(int fd, const void *buffer, unsigned size)
 {
 	// printf("buffer ? : %p\n", buffer);
-	check_buffer(buffer,size);
-	
+	check_buffer(buffer, size);
+
 	if (fd == 1)
 	{
 		putbuf(buffer, size);
 		return size;
 	}
 	struct file *f = process_get_file(fd);
-	if (f==NULL) return -1;
+	if (f == NULL)
+		return -1;
 
 	int bytes_written = file_write(f, buffer, size);
 	return bytes_written;
-	
 }
 
 static void sys_exit(int status)
@@ -220,16 +247,13 @@ int sys_filesize(int fd)
 	return size;
 }
 
-int sys_read(int fd, void *buffer, unsigned size) {
-	
+int sys_read(int fd, void *buffer, unsigned size)
+{
+
 	if (size == 0)
 		return 0;
 
-	for (size_t i = 0; i < size; i++) {
-		uint8_t *addr = (uint8_t *)buffer + i;
-		if (!is_user_vaddr(addr) || pml4_get_page(thread_current()->pml4, addr) == NULL)
-			sys_exit(-1);
-	}
+	check_buffer(buffer, size); // 페이지 단위 검사
 
 	struct thread *cur = thread_current();
 
@@ -287,6 +311,54 @@ int sys_open(const char *file)
 	}
 	int fd = find_unused_fd(file_obj);
 	return fd;
+}
+
+/* 현재 열린 파일의 커서 위치를 지정한 위치로 이동하는 시스템 콜 */
+void sys_seek(int fd, unsigned position)
+{
+	struct thread *cur = thread_current();
+
+	/* 유효하지 않은 파일 디스크립터인 경우 아무 작업도 하지 않음 */
+	if (fd < 0 || fd >= MAX_FD)
+	{
+		return;
+	}
+
+	/* fd 테이블에서 해당 파일 객체 가져오기 */
+	struct file *file_obj = cur->fd_table[fd];
+
+	/* 파일이 열려 있지 않다면 리턴 */
+	if (file_obj == NULL)
+	{
+		return;
+	}
+
+	/* 파일의 현재 읽기/쓰기 위치를 position으로 이동 */
+	file_seek(file_obj, position);
+}
+
+/* 현재 열린 파일의 커서 위치를 바이트 단위로 반환하는 시스템 콜 */
+unsigned sys_tell(int fd)
+{
+	struct thread *cur = thread_current();
+
+	/* 유효하지 않은 파일 디스크립터인 경우 -1 반환 (unsigned지만 오류 표시로 사용) */
+	if (fd < 0 || fd >= MAX_FD)
+	{
+		return -1;
+	}
+
+	/* fd 테이블에서 해당 파일 객체 가져오기 */
+	struct file *file_obj = cur->fd_table[fd];
+
+	/* 파일이 열려 있지 않다면 -1 반환 */
+	if (file_obj == NULL)
+	{
+		return -1;
+	}
+
+	/* 현재 파일의 커서 위치 반환 */
+	return file_tell(file_obj);
 }
 
 void

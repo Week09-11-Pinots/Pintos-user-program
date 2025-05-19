@@ -193,6 +193,7 @@ tid_t thread_create(const char *name, int priority,
 	struct thread *t;
 	tid_t tid;
 
+	struct thread *cur = thread_current();
 	ASSERT(function != NULL);
 
 	/* Allocate thread. */
@@ -224,10 +225,13 @@ tid_t thread_create(const char *name, int priority,
 	t->tf.cs = SEL_KCSEG;
 	t->tf.eflags = FLAG_IF;
 
+	/* 부모(cur)의 자식 리스트에 추가 */
+	list_push_back(&cur->children_list, &t->child_elem);
+
 	/* Add to run queue. */
 	thread_unblock(t);
 
-	struct thread *cur = thread_current();
+	ASSERT(&cur->children_list != NULL);
 
 	if (compare_priority(&t->elem, &cur->elem, NULL))
 		thread_yield();
@@ -612,8 +616,11 @@ init_thread(struct thread *t, const char *name, int priority)
 		}
 	}
 
+	list_init(&t->children_list);
 	list_init(&t->donations);
 	list_push_back(&all_list, &t->all_elem);
+	t->wait_flag = false;
+	sema_init(&t->wait_sema, 0);
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should

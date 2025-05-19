@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include "threads/interrupt.h"
 #include "threads/fixed-point.h"
+#include "threads/synch.h"
 
 #ifdef VM
 #include "vm/vm.h"
@@ -109,10 +110,12 @@ struct thread
 	// TODO : 동적할당으로 해야할지도
 	struct file **fd_table;		 // 파일 디스크럽터 테이블
 	struct semaphore *fork_sema; // fork 동기화를 위한 세마포어
+	struct semaphore wait_sema;	 // wait를 위한 세마포어
 
-	struct list children_list;
+	struct list children_list; /* 나의 자식 프로세스 리스트 */
 	struct list_elem child_elem;
-	int exit_status;
+	int exit_status; /* 종료 코드 저장 */
+	bool wait_flag;
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */

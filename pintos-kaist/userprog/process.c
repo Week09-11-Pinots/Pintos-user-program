@@ -32,10 +32,10 @@ static void initd(void *f_name);
 static void __do_fork(void *);
 static int parse_args(char *, char *[]);
 static bool setup_stack(struct intr_frame *if_);
+static struct thread *get_my_child(tid_t tid);
 
 /* General process initializer for initd and other process. */
-static void
-process_init(void)
+static void process_init(void)
 {
 	struct thread *current = thread_current();
 	current->fd_table = calloc(MAX_FD, sizeof(struct file *));
@@ -69,6 +69,7 @@ tid_t process_create_initd(const char *file_name)
 	tid = thread_create(file_name, PRI_DEFAULT, initd, fn_copy);
 	if (tid == TID_ERROR)
 		palloc_free_page(fn_copy);
+
 	return tid;
 }
 
@@ -101,6 +102,9 @@ tid_t process_fork(const char *name, struct intr_frame *if_ UNUSED)
 	memcpy(&info->parent_if, if_, sizeof(struct intr_frame));
 
 	tid_t child_tid = thread_create(name, PRI_DEFAULT, __do_fork, info);
+
+	if (child_tid == TID_ERROR || child_tid == NULL)
+		return TID_ERROR;
 
 	sema_down(parent->fork_sema); // 동기화를 위한 sema_down
 	return child_tid;
@@ -233,7 +237,6 @@ int process_exec(void *f_name)
 	ASSERT(cp_file_name != NULL);
 	success = load(cp_file_name, &_if);
 
-	/* 로드 실패 시 종료합니다. */
 	palloc_free_page(file_name);
 	if (!success)
 		return -1;
@@ -270,13 +273,42 @@ static int parse_args(char *target, char *argv[])
  * 이 함수는 문제 2-2에서 구현될 예정입니다. 지금은 아무 것도 하지 않습니다. */
 int process_wait(tid_t child_tid UNUSED)
 {
-
 	/* XXX: 힌트) pintos는 process_wait(initd)를 호출하면 종료되므로,
 	 * XXX:       process_wait을 구현하기 전까지는 여기에 무한 루프를 넣는 것을 추천합니다. */
 
-	timer_msleep(3000);
+	struct thread *cur = thread_current();
+	if (list_empty(&cur->children_list))
+		return -1;
 
-	return -1;
+	struct thread *child = get_my_child(child_tid);
+	if (child == NULL)
+		return -1;
+	if (child->wait_flag == true)
+		return -1;
+
+	child->wait_flag = true;
+	// timer_msleep(3000);
+	/* 자식의 wait_sema를 대기합니다. process_exit에서 wait_sema를 up 해줍니다 */
+	sema_down(&child->wait_sema);
+	int status = child->exit_status;
+	list_remove(&child->child_elem);
+	if (status < 0)
+		return -1;
+	return status;
+}
+
+/* 자신의 자식 리스트를 순회하며 인자로 받은 tid가 자신의 자식이 맞는지 확인하고, 해당 자식 스레드를 반환합니다 */
+static struct thread *get_my_child(tid_t tid)
+{
+	struct list_elem *e;
+	struct thread *cur = thread_current();
+	for (e = list_begin(&cur->children_list); e != list_end(&cur->children_list); e = list_next(e))
+	{
+		struct thread *child = list_entry(e, struct thread, child_elem);
+		if (child->tid == tid)
+			return child;
+	}
+	return NULL;
 }
 
 /* 프로세스를 종료합니다. 이 함수는 thread_exit()에 의해 호출됩니다. */
@@ -299,6 +331,7 @@ void process_exit(void)
 		curr->fd_table = NULL;
 	}
 
+	sema_up(&curr->wait_sema);
 	process_cleanup();
 }
 
@@ -415,9 +448,7 @@ load(const char *file_name, struct intr_frame *if_)
 	int i;
 
 	char *argv[MAX_ARGS];
-	// int argc = 0;
 	int argc = parse_args(file_name, argv);
-	// strlcpy(thread_current()->name, argv[0], sizeof thread_current()->name);
 	uint64_t rsp_arr[argc];
 
 	/* 페이지 디렉터리를 할당하고 활성화합니다. */
@@ -455,7 +486,7 @@ load(const char *file_name, struct intr_frame *if_)
 		if (file_read(file, &phdr, sizeof phdr) != sizeof phdr)
 			goto done;
 #else
-		// MAC(기본) 전용 코드
+		// docker(기본) 전용 코드
 		if (file_ofs < 0 || file_ofs > file_length(file))
 			goto done;
 		file_seek(file, file_ofs);
