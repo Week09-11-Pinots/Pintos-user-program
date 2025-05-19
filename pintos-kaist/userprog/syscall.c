@@ -83,7 +83,6 @@ void syscall_handler(struct intr_frame *f UNUSED)
 		f->R.rax = sys_remove(arg1);
 		break;
 	case SYS_OPEN:
-		// printf("SYS_OPEN!!!\n");
 		f->R.rax=sys_open(arg1);
 		break;
 	case SYS_FILESIZE:
@@ -100,14 +99,12 @@ void syscall_handler(struct intr_frame *f UNUSED)
 	case SYS_CLOSE:
 		break;
 	default:
-		// printf("system call!\n");
 		thread_exit();
 		break;
 	}
 }
 
 void sys_halt(){
-	// printf("SYSCALL_HALT \n");
 	power_off();
 }
 
@@ -133,7 +130,6 @@ static void sys_exit(int status)
 // 주소값이 유저 영역(0x8048000~0xc0000000)에서 사용하는 주소값인지 확인하는 함수
 void check_address(const uint64_t *addr)
 {
-	// printf("CHECKPOINT3\n");
 	struct thread *cur = thread_current();
 
 	if (addr == "" || !(is_user_vaddr(addr)) || pml4_get_page(cur->pml4, addr) == NULL)
@@ -168,15 +164,12 @@ int find_unused_fd(const char *file){
 
 int
 sys_open (const char *file) {
-	// printf("FILE NAME :%s\n", file);
 	check_address(file);
 	if(file==NULL||strcmp(file, "") == 0){
-		// printf("FILE IS EMPTY!\n");
 		return -1;
 	}
 	struct file *file_obj= filesys_open(file);
 	if(file_obj ==NULL) {
-		// printf("FILE %s IS NOT EXIST!\n", file);
 		return -1;
 	}
 
