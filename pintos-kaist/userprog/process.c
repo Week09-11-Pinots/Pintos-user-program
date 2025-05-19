@@ -406,19 +406,6 @@ void process_activate(struct thread *next)
 	tss_update(next);
 }
 
-<<<<<<< HEAD
-// int find_unused_fd(const char *file){
-// 	struct thread *cur = thread_current();
-
-// 	for(int i=2; i<=MAX_FD; i++ ){
-// 		if(cur->fd_table[i]==NULL){
-// 			cur->fd_table[i]=file;
-// 			return i;
-// 		}
-// 	}
-// }
-=======
->>>>>>> temp
 
 /* ELF 실행 파일을 로드합니다.
 다음 정의들은 ELF 사양서 [ELF1]에서 가져온 것입니다. */
@@ -528,25 +515,15 @@ load(const char *file_name, struct intr_frame *if_)
 		struct Phdr phdr;
 
 		/* WSL 전용 */
-<<<<<<< HEAD
-		off_t phdr_ofs = ehdr.e_phoff + i * sizeof(struct Phdr);
-		file_seek(file, phdr_ofs);
-		if (file_read(file, &phdr, sizeof phdr) != sizeof phdr)
-=======
 		// off_t phdr_ofs = ehdr.e_phoff + i * sizeof(struct Phdr);
 		// file_seek(file, phdr_ofs);
 		// if (file_read(file, &phdr, sizeof phdr) != sizeof phdr)
 		// 	goto done;
 
-		/* DOKCER 전용 */
-		if (file_ofs < 0 || file_ofs > file_length(file))
->>>>>>> temp
-			goto done;
-
 		/* MAC 전용 */
-		// if (file_ofs < 0 || file_ofs > file_length(file))
-		// 	goto done;
-		// file_seek(file, file_ofs);
+		if (file_ofs < 0 || file_ofs > file_length(file))
+			goto done;
+		file_seek(file, file_ofs);
 
 		if (file_read(file, &phdr, sizeof phdr) != sizeof phdr)
 			goto done;
