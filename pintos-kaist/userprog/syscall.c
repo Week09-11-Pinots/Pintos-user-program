@@ -11,6 +11,7 @@
 #include "filesys/filesys.h"
 #include "userprog/process.h"
 #include "filesys/file.h"
+#include "filesys/file.h"
 
 void syscall_entry(void);
 void syscall_handler(struct intr_frame *);
@@ -111,28 +112,6 @@ void syscall_handler(struct intr_frame *f UNUSED)
 	}
 }
 
-void sys_halt(){
-	power_off();
-}
-
-static int sys_write(int fd, const void *buffer, unsigned size)
-{
-	if (fd == 1)
-	{
-		putbuf(buffer, size);
-		return size;
-	}
-	return -1;
-}
-
-static void sys_exit(int status)
-{
-	struct thread *cur = thread_current();
-	cur->exit_status = status;
-
-	printf("%s: exit(%d)\n", thread_name(), status);
-	thread_exit();
-}
 
 // 주소값이 유저 영역(0x8048000~0xc0000000)에서 사용하는 주소값인지 확인하는 함수
 void check_address(const uint64_t *addr)
@@ -145,9 +124,69 @@ void check_address(const uint64_t *addr)
 	}
 }
 
-bool sys_create(const char *file, unsigned initial_size){
+void check_buffer(const void *buffer, unsigned size) {
+    uint8_t *start = (uint8_t *)pg_round_down(buffer);
+    uint8_t *end = (uint8_t *)pg_round_down(buffer + size - 1);
+    struct thread *cur = thread_current();
+    
+    for (uint8_t *addr = start; addr <= end; addr += PGSIZE) {
+        if (!is_user_vaddr(addr) || pml4_get_page(cur->pml4, addr) == NULL) {
+            // printf("Invalid page address: %p\n", addr);
+            sys_exit(-1);
+        }
+    }
+}
+
+
+struct file*
+process_get_file(int fd){
+	struct thread *cur = thread_current();
+
+	if (fd < 2 || fd > MAX_FD) return NULL;
+
+	return cur->fd_table[fd];
+}
+
+
+void sys_halt()
+{
+	power_off();
+}
+
+
+
+static int sys_write(int fd, const void *buffer, unsigned size)
+{
+	// printf("buffer ? : %p\n", buffer);
+	check_buffer(buffer,size);
+	
+	if (fd == 1)
+	{
+		putbuf(buffer, size);
+		return size;
+	}
+	struct file *f = process_get_file(fd);
+	if (f==NULL) return -1;
+
+	int bytes_written = file_write(f, buffer, size);
+	return bytes_written;
+	
+}
+
+static void sys_exit(int status)
+{
+	struct thread *cur = thread_current();
+	cur->exit_status = status;
+
+	printf("%s: exit(%d)\n", thread_name(), status);
+	thread_exit();
+}
+
+bool sys_create(const char *file, unsigned initial_size)
+{
 	check_address(file);
-	if(file==NULL||strcmp(file, "") == 0) {
+	if (file == NULL || strcmp(file, "") == 0)
+	{
 		sys_exit(-1);
 	}
 	return filesys_create(file, initial_size);
@@ -163,14 +202,16 @@ int sys_filesize(int fd)
 	// 현재 스레드의 fd_table에서 해당 fd에 대응되는 file 구조체를 가져온다
 	struct thread *cur = thread_current();
 
-	//fd가 음수거나 MAX_FD 초과인 경우
-	if (fd < 0 || fd >= MAX_FD) {
+	// fd가 음수거나 MAX_FD 초과인 경우
+	if (fd < 0 || fd >= MAX_FD)
+	{
 		return -1;
 	}
 
 	// 파일 객체 가져오기
 	struct file *file_obj = cur->fd_table[fd];
-	if (file_obj == NULL) {
+	if (file_obj == NULL)
+	{
 		return -1;
 	}
 
@@ -191,48 +232,56 @@ int sys_read(int fd, void *buffer, unsigned size) {
 
 	struct thread *cur = thread_current();
 
-	if (fd < 0 || fd >= MAX_FD) {
+	if (fd < 0 || fd >= MAX_FD)
+	{
 		return -1;
 	}
 
 	// stdin 처리
-	if (fd == 0) {
-		for (unsigned i = 0; i < size; i++) {
+	if (fd == 0)
+	{
+		for (unsigned i = 0; i < size; i++)
+		{
 			((char *)buffer)[i] = input_getc();
 		}
 		return size;
 	}
 
 	struct file *file_obj = cur->fd_table[fd];
-	if (file_obj == NULL) {
+	if (file_obj == NULL)
+	{
 		return -1;
 	}
 
-	//파일 읽기
+	// 파일 읽기
 	int bytes_read = file_read(file_obj, buffer, size);
 	return bytes_read;
 }
 
-
-int find_unused_fd(const char *file){
+int find_unused_fd(const char *file)
+{
 	struct thread *cur = thread_current();
-	
-	for(int i=2; i<=MAX_FD; i++ ){
-		if(cur->fd_table[i]==NULL){
-			cur->fd_table[i]=file;
+
+	for (int i = 2; i <= MAX_FD; i++)
+	{
+		if (cur->fd_table[i] == NULL)
+		{
+			cur->fd_table[i] = file;
 			return i;
 		}
 	}
 }
 
-int
-sys_open (const char *file) {
+int sys_open(const char *file)
+{
 	check_address(file);
-	if(file==NULL||strcmp(file, "") == 0){
+	if (file == NULL || strcmp(file, "") == 0)
+	{
 		return -1;
 	}
-	struct file *file_obj= filesys_open(file);
-	if(file_obj ==NULL) {
+	struct file *file_obj = filesys_open(file);
+	if (file_obj == NULL)
+	{
 		return -1;
 	}
 	int fd = find_unused_fd(file_obj);
