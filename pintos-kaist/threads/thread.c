@@ -121,8 +121,6 @@ void thread_init(void)
 	init_thread(initial_thread, "main", PRI_DEFAULT);
 	initial_thread->status = THREAD_RUNNING;
 	initial_thread->tid = allocate_tid();
-
-	
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -414,19 +412,19 @@ tid_t thread_tid(void)
 // 	do_schedule(THREAD_DYING);
 // 	NOT_REACHED();
 // }
-void
-thread_exit (void) {
-	ASSERT (!intr_context ());
+void thread_exit(void)
+{
+	ASSERT(!intr_context());
 
 #ifdef USERPROG
-	process_exit ();
+	process_exit();
 #endif
 
 	/* Just set our status to dying and schedule another process.
 	   We will be destroyed during the call to schedule_tail(). */
-	intr_disable ();
-	do_schedule (THREAD_DYING);
-	NOT_REACHED ();
+	intr_disable();
+	do_schedule(THREAD_DYING);
+	NOT_REACHED();
 }
 
 /* Yields the CPU.  The current thread is not put to sleep and
@@ -780,7 +778,7 @@ schedule(void)
 		if (curr && curr->status == THREAD_DYING && curr != initial_thread)
 		{
 			ASSERT(curr != next);
-			list_push_back(&destruction_req, &curr->elem);
+			list_insert_ordered(&destruction_req, &curr->elem, compare_priority, NULL);
 		}
 
 		/* 스레드를 전환하기 전에, 현재 실행 중인 스레드의 정보를 먼저 저장합니다. */

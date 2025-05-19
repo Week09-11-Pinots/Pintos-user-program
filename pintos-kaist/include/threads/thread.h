@@ -106,15 +106,18 @@ struct thread
 	int nice;			// 양보하려는 정도?
 	fixed_t recent_cpu; // CPU를 얼마나 점유했나?
 	struct list_elem all_elem;
-	
-	struct file *fd_table[MAX_FD];  //파일 디스크럽터 테이블 
-	// struct file **fd_table;  //파일 디스크럽터 테이블 
+	// TODO : 동적할당으로 해야할지도
+	struct file **fd_table;		 // 파일 디스크럽터 테이블
+	struct semaphore *fork_sema; // fork 동기화를 위한 세마포어
+
+	struct list children_list;
+	struct list_elem child_elem;
+	int exit_status;
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4; /* Page map level 4 */
-	int exit_status;
-	
+
 #endif
 #ifdef VM
 	/* Table for whole virtual memory owned by thread. */
@@ -175,5 +178,11 @@ typedef struct __donation__
 	struct thread *donor;
 	struct lock *lock;
 } donation;
+
+struct fork_info
+{
+	struct thread *parent;
+	struct intr_frame parent_if;
+};
 
 #endif /* threads/thread.h */
