@@ -53,7 +53,6 @@ void syscall_init(void)
  */
 	write_msr(MSR_SYSCALL_MASK,
 			  FLAG_IF | FLAG_TF | FLAG_DF | FLAG_IOPL | FLAG_AC | FLAG_NT);
-
 }
 
 /* The main system call interface */
@@ -81,6 +80,7 @@ void syscall_handler(struct intr_frame *f UNUSED)
 	case SYS_EXEC:
 		break;
 	case SYS_WAIT:
+		f->R.rax = process_wait((tid_t)arg1);
 		break;
 	case SYS_CREATE:
 		f->R.rax = sys_create(arg1, arg2);
@@ -112,7 +112,6 @@ void syscall_handler(struct intr_frame *f UNUSED)
 	}
 }
 
-
 // 주소값이 유저 영역(0x8048000~0xc0000000)에서 사용하는 주소값인지 확인하는 함수
 void check_address(const uint64_t *addr)
 {
@@ -124,53 +123,54 @@ void check_address(const uint64_t *addr)
 	}
 }
 
-void check_buffer(const void *buffer, unsigned size) {
-    uint8_t *start = (uint8_t *)pg_round_down(buffer);
-    uint8_t *end = (uint8_t *)pg_round_down(buffer + size - 1);
-    struct thread *cur = thread_current();
-    
-    for (uint8_t *addr = start; addr <= end; addr += PGSIZE) {
-        if (!is_user_vaddr(addr) || pml4_get_page(cur->pml4, addr) == NULL) {
-            // printf("Invalid page address: %p\n", addr);
-            sys_exit(-1);
-        }
-    }
-}
-
-
-struct file*
-process_get_file(int fd){
+void check_buffer(const void *buffer, unsigned size)
+{
+	uint8_t *start = (uint8_t *)pg_round_down(buffer);
+	uint8_t *end = (uint8_t *)pg_round_down(buffer + size - 1);
 	struct thread *cur = thread_current();
 
-	if (fd < 2 || fd > MAX_FD) return NULL;
+	for (uint8_t *addr = start; addr <= end; addr += PGSIZE)
+	{
+		if (!is_user_vaddr(addr) || pml4_get_page(cur->pml4, addr) == NULL)
+		{
+			// printf("Invalid page address: %p\n", addr);
+			sys_exit(-1);
+		}
+	}
+}
+
+struct file *
+process_get_file(int fd)
+{
+	struct thread *cur = thread_current();
+
+	if (fd < 2 || fd > MAX_FD)
+		return NULL;
 
 	return cur->fd_table[fd];
 }
-
 
 void sys_halt()
 {
 	power_off();
 }
 
-
-
 static int sys_write(int fd, const void *buffer, unsigned size)
 {
 	// printf("buffer ? : %p\n", buffer);
-	check_buffer(buffer,size);
-	
+	check_buffer(buffer, size);
+
 	if (fd == 1)
 	{
 		putbuf(buffer, size);
 		return size;
 	}
 	struct file *f = process_get_file(fd);
-	if (f==NULL) return -1;
+	if (f == NULL)
+		return -1;
 
 	int bytes_written = file_write(f, buffer, size);
 	return bytes_written;
-	
 }
 
 static void sys_exit(int status)
@@ -219,12 +219,14 @@ int sys_filesize(int fd)
 	return size;
 }
 
-int sys_read(int fd, void *buffer, unsigned size) {
-	
+int sys_read(int fd, void *buffer, unsigned size)
+{
+
 	if (size == 0)
 		return 0;
 
-	for (size_t i = 0; i < size; i++) {
+	for (size_t i = 0; i < size; i++)
+	{
 		uint8_t *addr = (uint8_t *)buffer + i;
 		if (!is_user_vaddr(addr) || pml4_get_page(thread_current()->pml4, addr) == NULL)
 			sys_exit(-1);

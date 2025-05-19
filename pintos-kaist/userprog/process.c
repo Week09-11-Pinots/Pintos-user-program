@@ -32,7 +32,7 @@ static void initd(void *f_name);
 static void __do_fork(void *);
 static int parse_args(char *, char *[]);
 static bool setup_stack(struct intr_frame *if_);
-static bool is_my_child(tid_t tid);
+static struct thread *get_my_child(tid_t tid);
 
 /* General process initializer for initd and other process. */
 static void process_init(void)
@@ -40,7 +40,9 @@ static void process_init(void)
 	struct thread *current = thread_current();
 	current->fd_table = calloc(MAX_FD, sizeof(struct file *));
 	current->fork_sema = malloc(sizeof(struct semaphore));
+	current->wait_flag = false;
 	sema_init(current->fork_sema, 0);
+	sema_init(&current->wait_sema, 0);
 	list_init(&current->children_list);
 	ASSERT(current->fd_table != NULL);
 }
@@ -70,6 +72,7 @@ tid_t process_create_initd(const char *file_name)
 	tid = thread_create(file_name, PRI_DEFAULT, initd, fn_copy);
 	if (tid == TID_ERROR)
 		palloc_free_page(fn_copy);
+
 	return tid;
 }
 
@@ -276,20 +279,32 @@ static int parse_args(char *target, char *argv[])
  * 이 함수는 문제 2-2에서 구현될 예정입니다. 지금은 아무 것도 하지 않습니다. */
 int process_wait(tid_t child_tid UNUSED)
 {
-
 	/* XXX: 힌트) pintos는 process_wait(initd)를 호출하면 종료되므로,
 	 * XXX:       process_wait을 구현하기 전까지는 여기에 무한 루프를 넣는 것을 추천합니다. */
 
-	if (!is_my_child(child_tid))
+	struct thread *cur = thread_current();
+	if (cur->tid == 1 || list_empty(&cur->children_list))
 		return -1;
 
-	timer_msleep(3000);
+	struct thread *child = get_my_child(child_tid);
+	if (child == NULL)
+		return -1;
+	if (child->wait_flag == true)
+		return -1;
 
-	return -1;
+	child->wait_flag = true;
+	// timer_msleep(3000);
+	/* 자식의 wait_sema를 대기합니다. process_exit에서 wait_sema를 up 해줍니다 */
+	sema_down(&child->wait_sema);
+	int status = child->exit_status;
+	list_remove(&child->child_elem);
+	if (status < 0)
+		return -1;
+	return status;
 }
 
-/* 자신의 자식 리스트를 순회하며 인자로 받은 tid가 자신의 자식이 맞는지 확인합니다 */
-static bool is_my_child(tid_t tid)
+/* 자신의 자식 리스트를 순회하며 인자로 받은 tid가 자신의 자식이 맞는지 확인하고, 해당 자식 스레드를 반환합니다 */
+static struct thread *get_my_child(tid_t tid)
 {
 	struct list_elem *e;
 	struct thread *cur = thread_current();
@@ -297,9 +312,9 @@ static bool is_my_child(tid_t tid)
 	{
 		struct thread *child = list_entry(e, struct thread, child_elem);
 		if (child->tid == tid)
-			return true;
+			return child;
 	}
-	return false;
+	return NULL;
 }
 
 /* 프로세스를 종료합니다. 이 함수는 thread_exit()에 의해 호출됩니다. */
@@ -322,6 +337,7 @@ void process_exit(void)
 		curr->fd_table = NULL;
 	}
 
+	sema_up(&curr->wait_sema);
 	process_cleanup();
 }
 
