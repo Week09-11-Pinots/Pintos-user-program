@@ -41,6 +41,7 @@ process_init(void)
 	current->fd_table = calloc(MAX_FD, sizeof(struct file *));
 	current->fork_sema = malloc(sizeof(struct semaphore));
 	sema_init(current->fork_sema, 0);
+	list_init(&current->children_list);
 	ASSERT(current->fd_table != NULL);
 }
 
@@ -101,6 +102,9 @@ tid_t process_fork(const char *name, struct intr_frame *if_ UNUSED)
 	memcpy(&info->parent_if, if_, sizeof(struct intr_frame));
 
 	tid_t child_tid = thread_create(name, PRI_DEFAULT, __do_fork, info);
+
+	if (child_tid == TID_ERROR || child_tid == NULL)
+		return TID_ERROR;
 
 	sema_down(parent->fork_sema); // 동기화를 위한 sema_down
 	return child_tid;
@@ -200,6 +204,8 @@ __do_fork(void *aux)
 
 	if_.R.rax = 0;
 	process_init();
+
+	list_push_back(&parent->children_list, &current->child_elem); /* 자신을 부모의 자식 리스트에 넣습니다 */
 
 	/* 마침내 새로 생성된 프로세스로 전환합니다. */
 	sema_up(parent->fork_sema); // 동기화 완료, 부모 프로세스 락 해제
