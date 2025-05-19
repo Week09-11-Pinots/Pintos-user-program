@@ -11,8 +11,6 @@
 #include "filesys/filesys.h"
 #include "userprog/process.h"
 #include "filesys/file.h"
-#include "filesys/file.h"
-#include "threads/palloc.h"
 
 void syscall_entry(void);
 void syscall_handler(struct intr_frame *);
@@ -25,8 +23,9 @@ int sys_open(const char *file);
 int sys_filesize(int fd);
 int sys_read(int fd, void *buffer, unsigned size);
 int find_unused_fd(const char *file);
-static struct file *find_file_by_fd(int fd);
-int sys_exec(char *file_name);
+void sys_seek(int fd, unsigned position);
+unsigned sys_tell(int fd);
+
 /* 시스템 콜.
  *
  * 이전에는 시스템 콜 서비스가 인터럽트 핸들러(예: 리눅스의 int 0x80)에 의해 처리되었습니다.
@@ -104,8 +103,10 @@ void syscall_handler(struct intr_frame *f UNUSED)
 		f->R.rax = sys_write(arg1, arg2, arg3);
 		break;
 	case SYS_SEEK:
+		sys_seek(arg1, arg2);
 		break;
 	case SYS_TELL:
+		f->R.rax = sys_tell(arg1);
 		break;
 	case SYS_CLOSE:
 		break;
@@ -147,10 +148,9 @@ int sys_exec(char *file_name)
 	return 0;
 }
 
-void check_buffer(const void *buffer, unsigned size)
+struct file *
+process_get_file(int fd)
 {
-	uint8_t *start = (uint8_t *)pg_round_down(buffer);
-	uint8_t *end = (uint8_t *)pg_round_down(buffer + size - 1);
 	struct thread *cur = thread_current();
 
 	for (uint8_t *addr = start; addr <= end; addr += PGSIZE)
@@ -249,12 +249,7 @@ int sys_read(int fd, void *buffer, unsigned size)
 	if (size == 0)
 		return 0;
 
-	for (size_t i = 0; i < size; i++)
-	{
-		uint8_t *addr = (uint8_t *)buffer + i;
-		if (!is_user_vaddr(addr) || pml4_get_page(thread_current()->pml4, addr) == NULL)
-			sys_exit(-1);
-	}
+	check_buffer(buffer, size); // 페이지 단위 검사
 
 	struct thread *cur = thread_current();
 
@@ -312,4 +307,52 @@ int sys_open(const char *file)
 	}
 	int fd = find_unused_fd(file_obj);
 	return fd;
+}
+
+/* 현재 열린 파일의 커서 위치를 지정한 위치로 이동하는 시스템 콜 */
+void sys_seek(int fd, unsigned position)
+{
+	struct thread *cur = thread_current();
+
+	/* 유효하지 않은 파일 디스크립터인 경우 아무 작업도 하지 않음 */
+	if (fd < 0 || fd >= MAX_FD)
+	{
+		return;
+	}
+
+	/* fd 테이블에서 해당 파일 객체 가져오기 */
+	struct file *file_obj = cur->fd_table[fd];
+
+	/* 파일이 열려 있지 않다면 리턴 */
+	if (file_obj == NULL)
+	{
+		return;
+	}
+
+	/* 파일의 현재 읽기/쓰기 위치를 position으로 이동 */
+	file_seek(file_obj, position);
+}
+
+/* 현재 열린 파일의 커서 위치를 바이트 단위로 반환하는 시스템 콜 */
+unsigned sys_tell(int fd)
+{
+	struct thread *cur = thread_current();
+
+	/* 유효하지 않은 파일 디스크립터인 경우 -1 반환 (unsigned지만 오류 표시로 사용) */
+	if (fd < 0 || fd >= MAX_FD)
+	{
+		return -1;
+	}
+
+	/* fd 테이블에서 해당 파일 객체 가져오기 */
+	struct file *file_obj = cur->fd_table[fd];
+
+	/* 파일이 열려 있지 않다면 -1 반환 */
+	if (file_obj == NULL)
+	{
+		return -1;
+	}
+
+	/* 현재 파일의 커서 위치 반환 */
+	return file_tell(file_obj);
 }
