@@ -83,7 +83,7 @@ void syscall_handler(struct intr_frame *f UNUSED)
 		f->R.rax = sys_remove(arg1);
 		break;
 	case SYS_OPEN:
-		// f->R.rax = sys_open(arg1);
+		f->R.rax = sys_open(arg1);
 		break;
 	case SYS_FILESIZE:
 		break;
@@ -99,16 +99,12 @@ void syscall_handler(struct intr_frame *f UNUSED)
 	case SYS_CLOSE:
 		break;
 	default:
-		printf("system call!\n");
 		thread_exit();
 		break;
 	}
 }
 
-void sys_halt()
-{
-	printf("SYSCALL_HALT \n");
-
+void sys_halt(){
 	power_off();
 }
 
@@ -142,14 +138,11 @@ void check_address(const uint64_t *addr)
 	}
 }
 
-bool sys_create(const char *file, unsigned initial_size)
-{
-	printf("FILE NAME :%s, INITIAL_SIZE:%s\n", file, initial_size);
-	if (strcmp(file, "") == 0 || file == NULL)
-	{
+bool sys_create(const char *file, unsigned initial_size){
+	check_address(file);
+	if(file==NULL||strcmp(file, "") == 0) {
 		sys_exit(-1);
 	}
-	check_address(file);
 	return filesys_create(file, initial_size);
 }
 
@@ -158,21 +151,28 @@ bool sys_remove(const char *file)
 	return filesys_remove(file);
 }
 
-// int
-// sys_open (const char *file) {
-// 	// printf("FILE NAME :%s\n", file);
-// 	check_address(file);
-// 	if(file==NULL||strcmp(file, "") == 0){
-// 		// printf("FILE IS EMPTY!\n");
-// 		return -1;
-// 	}
-// 	struct file *file_obj= filesys_open(file);
-// 	if(file_obj ==NULL) {
-// 		// printf("FILE %s IS NOT EXIST!\n", file);
-// 		return -1;
-// 	}
+int find_unused_fd(const char *file){
+	struct thread *cur = thread_current();
+	
+	for(int i=2; i<=MAX_FD; i++ ){
+		if(cur->fd_table[i]==NULL){
+			cur->fd_table[i]=file;
+			return i;
+		}
+	}
+}
 
-// 	return 0;
-// 	// int fd=find_unused_fd(file_obj);
-// 	// return fd;
-// }
+int
+sys_open (const char *file) {
+	check_address(file);
+	if(file==NULL||strcmp(file, "") == 0){
+		return -1;
+	}
+	struct file *file_obj= filesys_open(file);
+	if(file_obj ==NULL) {
+		return -1;
+	}
+
+	int fd=find_unused_fd(file_obj);
+	return fd;
+}
