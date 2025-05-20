@@ -33,6 +33,10 @@ typedef int tid_t;
 // #define MAX_FD 128
 #define MAX_FD 32
 
+/* Project 2 */
+#define FDT_PAGES 3						   // pages to allocate for file descriptor tables (thread_create, process_exit)
+#define FDCOUNT_LIMIT FDT_PAGES * (1 << 9) // Limit fd_idx
+
 /* A kernel thread or user process.
  *
  * Each thread structure is stored in its own 4 kB page.  The

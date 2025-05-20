@@ -33,19 +33,17 @@ const char *test_name = "multi-oom";
 
 int make_children(void);
 
-/* Open a number of files (and fail to close them).
-   The kernel must free any kernel resources associated
-   with these file descriptors. */
+/* 여러 개의 파일을 열고(닫지 않습니다).
+  커널은 이 파일 디스크립터들과 관련된 모든 커널 자원을 해제해야 합니다. */
 static void
 consume_some_resources(void)
 {
   int fd, fdmax = 126;
 
-  /* Open as many files as we can, up to fdmax.
-   Depending on how file descriptors are allocated inside
-   the kernel, open() may fail if the kernel is low on memory.
-   A low-memory condition in open() should not lead to the
-   termination of the process.  */
+  /* 가능한 한 많은 파일을 fdmax까지 엽니다.
+     커널 내부에서 파일 디스크립터가 어떻게 할당되는지에 따라,
+     커널의 메모리가 부족하면 open()이 실패할 수 있습니다.
+     open()에서의 저메모리 상황이 프로세스 종료로 이어져서는 안 됩니다. */
   for (fd = 0; fd < fdmax; fd++)
   {
 #ifdef EXTRA2

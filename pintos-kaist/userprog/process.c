@@ -107,7 +107,11 @@ tid_t process_fork(const char *name, struct intr_frame *if_ UNUSED)
 	if (child_tid == TID_ERROR || child_tid == NULL)
 		return TID_ERROR;
 
+	struct thread *child = get_my_child(child_tid);
 	sema_down(parent->fork_sema); // 동기화를 위한 sema_down
+	free(info);
+	if (child->exit_status == -1)
+		return TID_ERROR;
 	return child_tid;
 }
 
@@ -203,11 +207,13 @@ __do_fork(void *aux)
 	if_.R.rax = 0;
 
 	/* 마침내 새로 생성된 프로세스로 전환합니다. */
+	// free(info);
 	sema_up(parent->fork_sema); // 동기화 완료, 부모 프로세스 락 해제
 	if (succ)
 		do_iret(&if_); // 이 임시 인터럽트 프레임의 정보를 가지고 유저 모드로 점프
 error:
-	thread_exit();
+	sema_up(parent->fork_sema);
+	sys_exit(TID_ERROR);
 }
 
 /* 현재 실행 컨텍스트를 f_name으로 전환합니다.
@@ -284,12 +290,11 @@ int process_wait(tid_t child_tid UNUSED)
 		return -1;
 	/* 자식의 wait_sema를 대기합니다. process_exit에서 wait_sema를 up 해줍니다 */
 	sema_down(&child->wait_sema);
-	int status = child->exit_status;
+
 	list_remove(&child->child_elem);
 	sema_up(&child->free_sema);
-	if (status < 0)
-		return -1;
-	return status;
+
+	return child->exit_status;
 }
 
 /* 자신의 자식 리스트를 순회하며 인자로 받은 tid가 자신의 자식이 맞는지 확인하고, 해당 자식 스레드를 반환합니다 */
@@ -325,14 +330,17 @@ void process_exit(void)
 		free(curr->fd_table);
 		curr->fd_table = NULL;
 	}
-	if (curr->running_file != NULL)
-	{
-		file_allow_write(curr->running_file);
-		file_close(curr->running_file);
-	}
 
+	if (curr->exit_status == 0)
+		curr->exit_status = -1;
+
+	if (curr->running_file != NULL)
+		file_close(curr->running_file);
+
+	free(curr->fork_sema);
 	sema_up(&curr->wait_sema);
-	sema_down(&curr->free_sema); 
+	sema_down(&curr->free_sema);
+
 	process_cleanup();
 }
 
