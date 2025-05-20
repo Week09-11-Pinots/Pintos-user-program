@@ -17,7 +17,7 @@
 void syscall_entry(void);
 void syscall_handler(struct intr_frame *);
 static int sys_write(int fd, const void *buffer, unsigned size);
-static void sys_exit(int);
+void sys_exit(int);
 static void sys_halt();
 bool sys_create(const char *file, unsigned initial_size);
 bool sys_remove(const char *file);
@@ -28,7 +28,7 @@ int find_unused_fd(const char *file);
 void sys_seek(int fd, unsigned position);
 unsigned sys_tell(int fd);
 void check_buffer(const void *buffer, unsigned size);
-int sys_wait (tid_t pid);
+int sys_wait(tid_t pid);
 
 struct lock filesys_lock;
 
@@ -207,7 +207,7 @@ static int sys_write(int fd, const void *buffer, unsigned size)
 	return bytes_written;
 }
 
-static void sys_exit(int status)
+void sys_exit(int status)
 {
 	struct thread *cur = thread_current();
 	cur->exit_status = status;
@@ -384,7 +384,8 @@ void sys_close(int fd)
 	curr->fd_table[fd] = NULL;
 }
 
-int sys_wait (tid_t pid){
-	int status=process_wait(pid);
+int sys_wait(tid_t pid)
+{
+	int status = process_wait(pid);
 	return status;
 }
