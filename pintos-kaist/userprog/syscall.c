@@ -59,8 +59,6 @@ void syscall_init(void)
  */
 	write_msr(MSR_SYSCALL_MASK,
 			  FLAG_IF | FLAG_TF | FLAG_DF | FLAG_IOPL | FLAG_AC | FLAG_NT);
-
-	lock_init(&filesys_lock);
 }
 
 /* The main system call interface */
@@ -278,6 +276,7 @@ int sys_read(int fd, void *buffer, unsigned size)
 	}
 
 	struct file *file_obj = cur->fd_table[fd];
+
 	if (file_obj == NULL)
 	{
 		return -1;
