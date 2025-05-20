@@ -32,7 +32,7 @@ void sys_seek(int fd, unsigned position);
 unsigned sys_tell(int fd);
 void check_buffer(const void *buffer, unsigned size);
 
-// struct lock filesys_lock;
+struct lock filesys_lock;
 /* 시스템 콜.
  *
  * 이전에는 시스템 콜 서비스가 인터럽트 핸들러(예: 리눅스의 int 0x80)에 의해 처리되었습니다.
@@ -45,6 +45,7 @@ void check_buffer(const void *buffer, unsigned size);
 #define MSR_STAR 0xc0000081			/* Segment selector msr */
 #define MSR_LSTAR 0xc0000082		/* Long mode SYSCALL target */
 #define MSR_SYSCALL_MASK 0xc0000084 /* Mask for the eflags */
+
 
 void syscall_init(void)
 {
@@ -62,7 +63,7 @@ void syscall_init(void)
 	write_msr(MSR_SYSCALL_MASK,
 			  FLAG_IF | FLAG_TF | FLAG_DF | FLAG_IOPL | FLAG_AC | FLAG_NT);
 
-	// lock_init(&filesys_lock);
+	lock_init(&filesys_lock);
 
 }
 
@@ -154,6 +155,7 @@ void check_buffer(const void *buffer, unsigned size)
 	}
 }
 
+
 int sys_exec(char *file_name)
 {
 	check_address(file_name);
@@ -193,7 +195,6 @@ void sys_halt()
 
 static int sys_write(int fd, const void *buffer, unsigned size)
 {
-	// printf("buffer ? : %p\n", buffer);
 	check_buffer(buffer, size);
 
 	if (fd == 1)
@@ -287,7 +288,9 @@ int sys_read(int fd, void *buffer, unsigned size)
 	// 	return -1;
 
 	// 파일 읽기
+	lock_acquire(&filesys_lock);
 	int bytes_read = file_read(file_obj, buffer, size);
+	lock_release(&filesys_lock);
 	return bytes_read;
 }
 
@@ -317,6 +320,7 @@ int sys_open(const char *file)
 	{
 		return -1;
 	}
+
 	int fd = find_unused_fd(file_obj);
 	return fd;
 }
