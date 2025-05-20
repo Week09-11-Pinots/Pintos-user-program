@@ -96,6 +96,7 @@ initd(void *f_name)
 
 tid_t process_fork(const char *name, struct intr_frame *if_ UNUSED)
 {
+	printf(" %s fork 했습니다 \n", name);
 	struct fork_info *info = malloc(sizeof(struct fork_info));
 	ASSERT(info != NULL);
 	struct thread *parent = thread_current();

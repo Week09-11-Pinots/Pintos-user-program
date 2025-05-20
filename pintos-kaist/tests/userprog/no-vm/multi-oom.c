@@ -70,6 +70,7 @@ consume_some_resources_and_die(void)
 {
   consume_some_resources();
   int *KERN_BASE = (int *)0x8004000000;
+  printf("자원소모시키기\n");
 
   switch (random_ulong() % 5)
   {
@@ -98,6 +99,10 @@ consume_some_resources_and_die(void)
   return 0;
 }
 
+/* i가 EXPECTED_DEPTH_TO_PASS / 2 이상이면 child_i_X라는 이름으로 자식 프로세스를 fork 한다. 
+자식 프로세스면 자원 소모하고 비정상 종료함. 부모 프로세스는 wait으로 자식의 종료 상태를 받는데 
+자식이 crash 했으므로 -1 반환해야 함. 만약 -1이 아니면 테스트 실패.
+*/
 int make_children(void)
 {
   int i = 0;
@@ -107,10 +112,14 @@ int make_children(void)
   {
     if (i > EXPECTED_DEPTH_TO_PASS / 2)
     {
+      //비정상 종료 자식 생성 
       snprintf(child_name, sizeof child_name, "%s_%d_%s", "child", i, "X");
       pid = fork(child_name);
-      if (pid > 0 && wait(pid) != -1)
+      printf("pid: %d\n", pid);
+      int temp;
+      if (pid > 0 && (temp = wait(pid) != -1))
       {
+        printf("pid %d의 wait 반환값: %d\n", pid, temp);
         fail("crashed child should return -1.");
       }
       else if (pid == 0)
@@ -120,6 +129,7 @@ int make_children(void)
       }
     }
 
+    //정상 종료 자식 생성 
     snprintf(child_name, sizeof child_name, "%s_%d_%s", "child", i, "O");
     pid = fork(child_name);
     if (pid < 0)
