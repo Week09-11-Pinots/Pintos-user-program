@@ -31,6 +31,7 @@ void check_buffer(const void *buffer, unsigned size);
 
 struct lock filesys_lock;
 
+struct lock filesys_lock;
 /* 시스템 콜.
  *
  * 이전에는 시스템 콜 서비스가 인터럽트 핸들러(예: 리눅스의 int 0x80)에 의해 처리되었습니다.
@@ -59,6 +60,8 @@ void syscall_init(void)
  */
 	write_msr(MSR_SYSCALL_MASK,
 			  FLAG_IF | FLAG_TF | FLAG_DF | FLAG_IOPL | FLAG_AC | FLAG_NT);
+
+	lock_init(&filesys_lock);
 }
 
 /* The main system call interface */
@@ -188,7 +191,6 @@ void sys_halt()
 
 static int sys_write(int fd, const void *buffer, unsigned size)
 {
-	// printf("buffer ? : %p\n", buffer);
 	check_buffer(buffer, size);
 
 	if (fd == 1)
@@ -283,7 +285,9 @@ int sys_read(int fd, void *buffer, unsigned size)
 	}
 
 	// 파일 읽기
+	lock_acquire(&filesys_lock);
 	int bytes_read = file_read(file_obj, buffer, size);
+	lock_release(&filesys_lock);
 	return bytes_read;
 }
 

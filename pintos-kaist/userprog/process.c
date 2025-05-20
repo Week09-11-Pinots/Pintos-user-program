@@ -325,7 +325,7 @@ void process_exit(void)
 		{
 			if (curr->fd_table[i] != NULL)
 				file_close(curr->fd_table[i]); // 각 파일들 닫아주기
-		}
+				}
 		free(curr->fd_table);
 		curr->fd_table = NULL;
 	}
