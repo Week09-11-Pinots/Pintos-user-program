@@ -309,6 +309,7 @@ int sys_open(const char *file)
 	{
 		return -1;
 	}
+
 	int fd = find_unused_fd(file_obj);
 	return fd;
 }
@@ -361,11 +362,15 @@ unsigned sys_tell(int fd)
 	return file_tell(file_obj);
 }
 
-void
-sys_close (int fd) {
+void sys_close(int fd)
+{
+	struct thread *curr = thread_current();
+	if (fd < 2 || fd >= MAX_FD)
+		return NULL;
+	struct file *file_object = curr->fd_table[fd];
+	if (file_object == NULL)
+		return;
 
-	struct thread *curr=thread_current();
-	struct file **fdt=curr->fd_table;
-	if(fd<2 || fd >=MAX_FD) return NULL;
-	fdt[fd]=NULL;
+	file_close(file_object);
+	curr->fd_table[fd] = NULL;
 }
