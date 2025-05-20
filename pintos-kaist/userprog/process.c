@@ -200,6 +200,7 @@ __do_fork(void *aux)
 	{
 		if (parent->fd_table[i] != NULL)
 			current->fd_table[i] = file_duplicate(parent->fd_table[i]);
+			
 	}
 
 	if_.R.rax = 0;
@@ -464,7 +465,7 @@ load(const char *file_name, struct intr_frame *if_)
 		printf("load: %s: open failed\n", file_name);
 		goto done;
 	}
-
+	
 	/* 실행 헤더를 읽고 검증합니다. */
 	if (file_read(file, &ehdr, sizeof ehdr) != sizeof ehdr || memcmp(ehdr.e_ident, "\177ELF\2\1\1", 7) || ehdr.e_type != 2 || ehdr.e_machine != 0x3E // amd64
 		|| ehdr.e_version != 1 || ehdr.e_phentsize != sizeof(struct Phdr) || ehdr.e_phnum > 1024)
