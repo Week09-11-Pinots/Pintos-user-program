@@ -31,8 +31,6 @@ void check_buffer(const void *buffer, unsigned size);
 int sys_wait(tid_t pid);
 
 struct lock filesys_lock;
-
-struct lock filesys_lock;
 /* 시스템 콜.
  *
  * 이전에는 시스템 콜 서비스가 인터럽트 핸들러(예: 리눅스의 int 0x80)에 의해 처리되었습니다.
@@ -296,14 +294,15 @@ int find_unused_fd(const char *file)
 {
 	struct thread *cur = thread_current();
 
-	for (int i = 2; i <= MAX_FD; i++)
-	{
-		if (cur->fd_table[i] == NULL)
-		{
-			cur->fd_table[i] = file;
-			return i;
-		}
-	}
+	while (cur->fd_table[cur->fd_idx] && cur->fd_idx < MAX_FD)
+		cur->fd_idx++;
+
+	if (cur->fd_idx >= MAX_FD)
+		return -1;
+
+	cur->fd_table[cur->fd_idx] = file;
+
+	return cur->fd_idx;
 }
 
 int sys_open(const char *file)
@@ -313,6 +312,7 @@ int sys_open(const char *file)
 	{
 		return -1;
 	}
+	lock_acquire(&filesys_lock);
 	struct file *file_obj = filesys_open(file);
 	if (file_obj == NULL)
 	{
@@ -320,6 +320,7 @@ int sys_open(const char *file)
 	}
 
 	int fd = find_unused_fd(file_obj);
+	lock_release(&filesys_lock);
 	return fd;
 }
 

@@ -31,7 +31,9 @@ typedef int tid_t;
 #define PRI_DEFAULT 31 /* Default priority. */
 #define PRI_MAX 63	   /* Highest priority. */
 // #define MAX_FD 128
-#define MAX_FD 128
+/* Project 2 */
+#define FDT_PAGES 3					// pages to allocate for file descriptor tables (thread_create, process_exit)
+#define MAX_FD FDT_PAGES * (1 << 9) // Limit fd_idx
 
 /* A kernel thread or user process.
  *
@@ -108,7 +110,8 @@ struct thread
 	fixed_t recent_cpu; // CPU를 얼마나 점유했나?
 	struct list_elem all_elem;
 	// TODO : 동적할당으로 해야할지도
-	struct file **fd_table;		// 파일 디스크럽터 테이블
+	struct file **fd_table; // 파일 디스크럽터 테이블
+	int fd_idx;
 	struct semaphore fork_sema; // fork 동기화를 위한 세마포어
 	struct semaphore wait_sema; // wait를 위한 세마포어
 	struct semaphore free_sema; // 받았음을 전달하는 세마포어

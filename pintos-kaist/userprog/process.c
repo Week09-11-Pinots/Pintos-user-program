@@ -38,10 +38,11 @@ static struct thread *get_my_child(tid_t tid);
 static void process_init(void)
 {
 	struct thread *current = thread_current();
-	current->fd_table = calloc(MAX_FD, sizeof(struct file *));
+	// current->fd_table = calloc(MAX_FD, sizeof(struct file *));
+	current->fd_table = palloc_get_multiple(PAL_ZERO, FDT_PAGES);
+	current->fd_idx = 2;
 	ASSERT(current->fd_table != NULL);
 	sema_init(&current->fork_sema, 0);
-	ASSERT(current->fd_table != NULL);
 }
 
 /* 첫 번째 사용자 프로그램인 "initd"를 FILE_NAME에서 로드하여 시작합니다.
@@ -110,7 +111,10 @@ tid_t process_fork(const char *name, struct intr_frame *if_ UNUSED)
 	}
 
 	sema_down(&parent->fork_sema); // 동기화를 위한 sema_down
+	struct thread *child = get_my_child(child_tid);
 	free(info);
+	if (child->exit_status == TID_ERROR)
+		return TID_ERROR;
 	return child_tid;
 }
 
@@ -197,11 +201,20 @@ __do_fork(void *aux)
 	 * TODO: 힌트) 파일 객체를 복제하려면 include/filesys/file.h의 `file_duplicate`를 사용하세요.
 	 * TODO:       이 함수가 부모의 자원을 성공적으로 복제할 때까지 부모는 fork()에서 반환되면 안 됩니다. */
 	/* 부모의 fd_table을 순회하며 복사 */
-	for (int i = 0; i < MAX_FD; i++)
+	if (parent->fd_idx == MAX_FD)
+		goto error;
+
+	for (int fd = 0; fd < MAX_FD; fd++)
 	{
-		if (parent->fd_table[i] != NULL)
-			current->fd_table[i] = file_duplicate(parent->fd_table[i]);
+		if (fd <= 1)
+			current->fd_table[fd] = parent->fd_table[fd];
+		else
+		{
+			if (parent->fd_table[fd] != NULL)
+				current->fd_table[fd] = file_duplicate(parent->fd_table[fd]);
+		}
 	}
+	current->fd_idx = parent->fd_idx;
 
 	if_.R.rax = 0;
 
@@ -319,16 +332,17 @@ void process_exit(void)
 	 * TODO: 프로세스 종료 메시지를 구현하세요 (project2/process_termination.html 참고).
 	 * TODO: 우리는 이곳에 프로세스 자원 정리를 구현하는 것을 추천합니다. */
 	/* fd 테이블 정리 */
-	if (curr->fd_table != NULL)
-	{
-		for (int i = 0; i < MAX_FD; i++)
-		{
-			if (curr->fd_table[i] != NULL)
-				file_close(curr->fd_table[i]); // 각 파일들 닫아주기
-		}
-		free(curr->fd_table);
-		curr->fd_table = NULL;
-	}
+	// if (curr->fd_table != NULL)
+	// {
+	// 	for (int i = 0; i < MAX_FD; i++)
+	// 	{
+	// 		if (curr->fd_table[i] != NULL)
+	// 			file_close(curr->fd_table[i]); // 각 파일들 닫아주기
+	// 	}
+	// 	free(curr->fd_table);
+	// 	curr->fd_table = NULL;
+	// }
+	palloc_free_multiple(curr->fd_table, FDT_PAGES);
 	if (curr->running_file != NULL)
 	{
 		file_allow_write(curr->running_file);
