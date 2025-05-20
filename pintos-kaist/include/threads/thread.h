@@ -111,12 +111,12 @@ struct thread
 	struct file **fd_table;		 // 파일 디스크럽터 테이블
 	struct semaphore *fork_sema; // fork 동기화를 위한 세마포어
 	struct semaphore wait_sema;	 // wait를 위한 세마포어
+	struct semaphore free_sema;	 // 받았음을 전달하는 세마포어
 
 	struct list children_list; /* 나의 자식 프로세스 리스트 */
 	struct list_elem child_elem;
 	struct file *running_file;
 	int exit_status; /* 종료 코드 저장 */
-	bool wait_flag;
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
