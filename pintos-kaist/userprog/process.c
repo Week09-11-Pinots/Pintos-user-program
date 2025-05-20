@@ -203,6 +203,7 @@ __do_fork(void *aux)
 	if_.R.rax = 0;
 
 	/* 마침내 새로 생성된 프로세스로 전환합니다. */
+	free(info);
 	sema_up(parent->fork_sema); // 동기화 완료, 부모 프로세스 락 해제
 	if (succ)
 		do_iret(&if_); // 이 임시 인터럽트 프레임의 정보를 가지고 유저 모드로 점프
