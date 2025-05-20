@@ -12,8 +12,7 @@
 #include "userprog/process.h"
 #include "filesys/file.h"
 #include "threads/palloc.h"
-#include "threads/synch.h" 
-
+#include "threads/synch.h"
 
 void syscall_entry(void);
 void syscall_handler(struct intr_frame *);
@@ -30,10 +29,9 @@ void sys_seek(int fd, unsigned position);
 unsigned sys_tell(int fd);
 void check_buffer(const void *buffer, unsigned size);
 
-<<<<<<< HEAD
 struct lock filesys_lock;
-=======
->>>>>>> 6c6fb8204ca0cb11ae6c8b873f24f96a37e8bef3
+
+struct lock filesys_lock;
 /* 시스템 콜.
  *
  * 이전에는 시스템 콜 서비스가 인터럽트 핸들러(예: 리눅스의 int 0x80)에 의해 처리되었습니다.
@@ -46,7 +44,6 @@ struct lock filesys_lock;
 #define MSR_STAR 0xc0000081			/* Segment selector msr */
 #define MSR_LSTAR 0xc0000082		/* Long mode SYSCALL target */
 #define MSR_SYSCALL_MASK 0xc0000084 /* Mask for the eflags */
-
 
 void syscall_init(void)
 {
@@ -64,11 +61,7 @@ void syscall_init(void)
 	write_msr(MSR_SYSCALL_MASK,
 			  FLAG_IF | FLAG_TF | FLAG_DF | FLAG_IOPL | FLAG_AC | FLAG_NT);
 
-<<<<<<< HEAD
 	lock_init(&filesys_lock);
-=======
->>>>>>> 6c6fb8204ca0cb11ae6c8b873f24f96a37e8bef3
-
 }
 
 /* The main system call interface */
@@ -158,7 +151,6 @@ void check_buffer(const void *buffer, unsigned size)
 		}
 	}
 }
-
 
 int sys_exec(char *file_name)
 {
@@ -270,13 +262,16 @@ int sys_read(int fd, void *buffer, unsigned size)
 
 	struct thread *cur = thread_current();
 
-	if (fd < 0 || fd >= MAX_FD){
+	if (fd < 0 || fd >= MAX_FD)
+	{
 		return -1;
 	}
 
 	// stdin 처리
-	if (fd == 0){
-		for (unsigned i = 0; i < size; i++){
+	if (fd == 0)
+	{
+		for (unsigned i = 0; i < size; i++)
+		{
 			((char *)buffer)[i] = input_getc();
 		}
 		return size;
@@ -284,7 +279,8 @@ int sys_read(int fd, void *buffer, unsigned size)
 
 	struct file *file_obj = cur->fd_table[fd];
 
-	if (file_obj == NULL){
+	if (file_obj == NULL)
+	{
 		return -1;
 	}
 
@@ -374,11 +370,15 @@ unsigned sys_tell(int fd)
 	return file_tell(file_obj);
 }
 
-void
-sys_close (int fd) {
+void sys_close(int fd)
+{
+	struct thread *curr = thread_current();
+	if (fd < 2 || fd >= MAX_FD)
+		return NULL;
+	struct file *file_object = curr->fd_table[fd];
+	if (file_object == NULL)
+		return;
 
-	struct thread *curr=thread_current();
-	struct file **fdt=curr->fd_table;
-	if(fd<2 || fd >=MAX_FD) return NULL;
-	fdt[fd]=NULL;
+	file_close(file_object);
+	curr->fd_table[fd] = NULL;
 }

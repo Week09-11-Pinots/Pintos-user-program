@@ -194,15 +194,10 @@ __do_fork(void *aux)
 	 * TODO: 힌트) 파일 객체를 복제하려면 include/filesys/file.h의 `file_duplicate`를 사용하세요.
 	 * TODO:       이 함수가 부모의 자원을 성공적으로 복제할 때까지 부모는 fork()에서 반환되면 안 됩니다. */
 	/* 부모의 fd_table을 순회하며 복사 */
-	// if (parent->fd_table[0] != NULL)
-	// 	current->fd_table[0] = parent->fd_table[0]; // 표준 입력
-	// if (parent->fd_table[1] != NULL)
-	// 	current->fd_table[1] = parent->fd_table[1]; // 표준 출력
 	for (int i = 0; i < MAX_FD; i++)
 	{
 		if (parent->fd_table[i] != NULL)
 			current->fd_table[i] = file_duplicate(parent->fd_table[i]);
-			
 	}
 
 	if_.R.rax = 0;
@@ -238,6 +233,9 @@ int process_exec(void *f_name)
 	/* 그리고 이진 파일을 로드합니다. */
 	ASSERT(cp_file_name != NULL);
 	success = load(cp_file_name, &_if);
+
+	thread_current()->running_file = filesys_open(cp_file_name);
+	file_deny_write(thread_current()->running_file);
 
 	palloc_free_page(file_name);
 	if (!success)
@@ -327,12 +325,15 @@ void process_exit(void)
 		{
 			if (curr->fd_table[i] != NULL)
 				file_close(curr->fd_table[i]); // 각 파일들 닫아주기
-			
-		}
+				}
 		free(curr->fd_table);
 		curr->fd_table = NULL;
 	}
-	list_remove(&curr->child_elem);
+	if (curr->running_file != NULL)
+	{
+		file_allow_write(curr->running_file);
+		file_close(curr->running_file);
+	}
 
 	sema_up(&curr->wait_sema);
 	process_cleanup();
@@ -467,7 +468,7 @@ load(const char *file_name, struct intr_frame *if_)
 		printf("load: %s: open failed\n", file_name);
 		goto done;
 	}
-	
+
 	/* 실행 헤더를 읽고 검증합니다. */
 	if (file_read(file, &ehdr, sizeof ehdr) != sizeof ehdr || memcmp(ehdr.e_ident, "\177ELF\2\1\1", 7) || ehdr.e_type != 2 || ehdr.e_machine != 0x3E // amd64
 		|| ehdr.e_version != 1 || ehdr.e_phentsize != sizeof(struct Phdr) || ehdr.e_phnum > 1024)
