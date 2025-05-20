@@ -193,7 +193,7 @@ __do_fork(void *aux)
 	/* TODO: 이 아래에 코드를 작성해야 합니다.
 	 * TODO: 힌트) 파일 객체를 복제하려면 include/filesys/file.h의 `file_duplicate`를 사용하세요.
 	 * TODO:       이 함수가 부모의 자원을 성공적으로 복제할 때까지 부모는 fork()에서 반환되면 안 됩니다. */
-	/* 부모의 fd_table을 순회하며 복사 */
+	// /* 부모의 fd_table을 순회하며 복사 */
 	for (int i = 0; i < MAX_FD; i++)
 	{
 		if (parent->fd_table[i] != NULL)

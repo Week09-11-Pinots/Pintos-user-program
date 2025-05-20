@@ -117,6 +117,7 @@ struct thread
 	struct file *running_file;
 	int exit_status; /* 종료 코드 저장 */
 	bool wait_flag;
+	struct list child_status_list;  // 종료된 자식의 상태 보관 리스트
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
@@ -132,6 +133,8 @@ struct thread
 	struct intr_frame tf; /* Information for switching */
 	unsigned magic;		  /* Detects stack overflow. */
 };
+
+
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.

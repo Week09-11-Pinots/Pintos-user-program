@@ -31,7 +31,6 @@ void check_buffer(const void *buffer, unsigned size);
 
 struct lock filesys_lock;
 
-struct lock filesys_lock;
 /* 시스템 콜.
  *
  * 이전에는 시스템 콜 서비스가 인터럽트 핸들러(예: 리눅스의 int 0x80)에 의해 처리되었습니다.
