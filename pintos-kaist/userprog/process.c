@@ -200,6 +200,8 @@ __do_fork(void *aux)
 			current->fd_table[i] = file_duplicate(parent->fd_table[i]);
 	}
 
+	current->parent=parent;
+	list_push_back(&parent->children_list, &current->child_elem);
 	if_.R.rax = 0;
 
 	/* 마침내 새로 생성된 프로세스로 전환합니다. */
@@ -278,7 +280,7 @@ int process_wait(tid_t child_tid UNUSED)
 	struct thread *cur = thread_current();
 	if (list_empty(&cur->children_list))
 		return -1;
-
+	
 	struct thread *child = get_my_child(child_tid);
 	if (child == NULL)
 		return -1;
@@ -303,8 +305,12 @@ static struct thread *get_my_child(tid_t tid)
 	for (e = list_begin(&cur->children_list); e != list_end(&cur->children_list); e = list_next(e))
 	{
 		struct thread *child = list_entry(e, struct thread, child_elem);
-		if (child->tid == tid)
-			return child;
+		if (child->tid == tid){
+			if(child->parent!=NULL)
+				return child;
+			else
+				return -1;
+		}
 	}
 	return NULL;
 }
@@ -313,11 +319,22 @@ static struct thread *get_my_child(tid_t tid)
 void process_exit(void)
 {
 	struct thread *curr = thread_current();
-
+	struct list_elem *e;
 	/* TODO: 여기에 코드를 작성하세요.
 	 * TODO: 프로세스 종료 메시지를 구현하세요 (project2/process_termination.html 참고).
 	 * TODO: 우리는 이곳에 프로세스 자원 정리를 구현하는 것을 추천합니다. */
 	/* fd 테이블 정리 */
+
+	for (e = list_begin(&curr->children_list); e != list_end(&curr->children_list); e = list_next(e))
+	{
+		struct thread *child = list_entry(e, struct thread, child_elem);
+		e=list_remove(&child->child_elem);
+		child->parent=NULL;
+	}
+
+	list_init(&curr->children_list);
+
+
 	if (curr->fd_table != NULL)
 	{
 		for (int i = 0; i < MAX_FD; i++)
