@@ -119,6 +119,7 @@ void syscall_handler(struct intr_frame *f UNUSED)
 		f->R.rax = sys_tell(arg1);
 		break;
 	case SYS_CLOSE:
+		sys_close(arg1);
 		break;
 	default:
 		thread_exit();
@@ -366,4 +367,13 @@ unsigned sys_tell(int fd)
 
 	/* 현재 파일의 커서 위치 반환 */
 	return file_tell(file_obj);
+}
+
+void
+sys_close (int fd) {
+
+	struct thread *curr=thread_current();
+	struct file **fdt=curr->fd_table;
+	if(fd<2 || fd >=MAX_FD) return NULL;
+	fdt[fd]=NULL;
 }
