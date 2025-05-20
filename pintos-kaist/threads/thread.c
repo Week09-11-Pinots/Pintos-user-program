@@ -599,6 +599,7 @@ init_thread(struct thread *t, const char *name, int priority)
 	t->original_priority = priority;
 	t->pending_lock = NULL;
 	t->magic = THREAD_MAGIC;
+	t->parent=1;
 
 	if (thread_mlfqs)
 	{
@@ -618,6 +619,7 @@ init_thread(struct thread *t, const char *name, int priority)
 
 	list_init(&t->children_list);
 	list_init(&t->donations);
+	list_init(&t->children_list);
 	list_push_back(&all_list, &t->all_elem);
 	t->wait_flag = false;
 	sema_init(&t->wait_sema, 0);

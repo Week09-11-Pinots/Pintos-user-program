@@ -102,6 +102,7 @@ tid_t process_fork(const char *name, struct intr_frame *if_ UNUSED)
 	info->parent = parent;
 	memcpy(&info->parent_if, if_, sizeof(struct intr_frame));
 
+
 	tid_t child_tid = thread_create(name, PRI_DEFAULT, __do_fork, info);
 
 	if (child_tid == TID_ERROR || child_tid == NULL)
@@ -201,6 +202,10 @@ __do_fork(void *aux)
 	}
 
 	if_.R.rax = 0;
+	current->parent=parent;
+	printf("listsize: %d\n", list_size(&parent->children_list));
+	list_push_back(&parent->children_list, &current->child_elem);
+
 
 	/* 마침내 새로 생성된 프로세스로 전환합니다. */
 	sema_up(parent->fork_sema); // 동기화 완료, 부모 프로세스 락 해제
@@ -289,7 +294,17 @@ int process_wait(tid_t child_tid UNUSED)
 	/* 자식의 wait_sema를 대기합니다. process_exit에서 wait_sema를 up 해줍니다 */
 	sema_down(&child->wait_sema);
 	int status = child->exit_status;
-	list_remove(&child->child_elem);
+
+	//cur의 리스트를 순회하며 무슨 자식들을 가지고 있는지 출력 
+	printf("현재 자식 사이즈: %d\n", list_size(&cur->children_list));
+	printf("자식 리스트 요소: \n");
+	struct list_elem *e;
+	for (e = list_begin(&cur->children_list); e != list_end(&cur->children_list); e = list_next(e)) {
+		struct thread *child = list_entry(e, struct thread, child_elem);
+		printf("child tid: %d\n", child->tid);
+	}
+		
+	// list_remove(&child->child_elem);
 	if (status < 0)
 		return -1;
 	return status;
@@ -317,6 +332,9 @@ void process_exit(void)
 	/* TODO: 여기에 코드를 작성하세요.
 	 * TODO: 프로세스 종료 메시지를 구현하세요 (project2/process_termination.html 참고).
 	 * TODO: 우리는 이곳에 프로세스 자원 정리를 구현하는 것을 추천합니다. */
+
+	// list_init(&curr->children_list);
+	
 	/* fd 테이블 정리 */
 	if (curr->fd_table != NULL)
 	{
@@ -335,6 +353,10 @@ void process_exit(void)
 	}
 
 	sema_up(&curr->wait_sema);
+	if(curr->parent!=1){
+		//자식 프로세스라면
+		list_remove(&curr->child_elem);
+	}
 	process_cleanup();
 }
 

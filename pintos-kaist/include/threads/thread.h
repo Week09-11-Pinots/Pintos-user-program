@@ -115,6 +115,7 @@ struct thread
 	struct list children_list; /* 나의 자식 프로세스 리스트 */
 	struct list_elem child_elem;
 	struct file *running_file;
+	struct thread* parent;
 	int exit_status; /* 종료 코드 저장 */
 	bool wait_flag;
 

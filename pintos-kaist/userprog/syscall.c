@@ -254,7 +254,6 @@ int sys_filesize(int fd)
 
 int sys_read(int fd, void *buffer, unsigned size)
 {
-
 	if (size == 0)
 		return 0;
 
