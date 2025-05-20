@@ -107,7 +107,10 @@ tid_t process_fork(const char *name, struct intr_frame *if_ UNUSED)
 	if (child_tid == TID_ERROR || child_tid == NULL)
 		return TID_ERROR;
 
+	struct thread *child = get_my_child(child_tid);
 	sema_down(parent->fork_sema); // 동기화를 위한 sema_down
+	if (child->exit_status == -1)
+		return TID_ERROR;
 	return child_tid;
 }
 
@@ -208,7 +211,8 @@ __do_fork(void *aux)
 	if (succ)
 		do_iret(&if_); // 이 임시 인터럽트 프레임의 정보를 가지고 유저 모드로 점프
 error:
-	thread_exit();
+	sema_up(parent->fork_sema);
+	exit(TID_ERROR)
 }
 
 /* 현재 실행 컨텍스트를 f_name으로 전환합니다.
