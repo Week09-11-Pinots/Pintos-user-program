@@ -104,9 +104,13 @@ tid_t process_fork(const char *name, struct intr_frame *if_ UNUSED)
 	tid_t child_tid = thread_create(name, PRI_DEFAULT, __do_fork, info);
 
 	if (child_tid == TID_ERROR || child_tid == NULL)
+	{
+		free(info);
 		return TID_ERROR;
+	}
 
 	sema_down(&parent->fork_sema); // 동기화를 위한 sema_down
+	free(info);
 	return child_tid;
 }
 
