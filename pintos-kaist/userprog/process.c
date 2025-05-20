@@ -40,8 +40,7 @@ static void process_init(void)
 	struct thread *current = thread_current();
 	current->fd_table = calloc(MAX_FD, sizeof(struct file *));
 	ASSERT(current->fd_table != NULL);
-	current->fork_sema = malloc(sizeof(struct semaphore));
-	sema_init(current->fork_sema, 0);
+	sema_init(&current->fork_sema, 0);
 	ASSERT(current->fd_table != NULL);
 }
 
@@ -107,7 +106,7 @@ tid_t process_fork(const char *name, struct intr_frame *if_ UNUSED)
 	if (child_tid == TID_ERROR || child_tid == NULL)
 		return TID_ERROR;
 
-	sema_down(parent->fork_sema); // 동기화를 위한 sema_down
+	sema_down(&parent->fork_sema); // 동기화를 위한 sema_down
 	return child_tid;
 }
 
@@ -203,11 +202,12 @@ __do_fork(void *aux)
 	if_.R.rax = 0;
 
 	/* 마침내 새로 생성된 프로세스로 전환합니다. */
-	sema_up(parent->fork_sema); // 동기화 완료, 부모 프로세스 락 해제
+	sema_up(&parent->fork_sema); // 동기화 완료, 부모 프로세스 락 해제
 	if (succ)
 		do_iret(&if_); // 이 임시 인터럽트 프레임의 정보를 가지고 유저 모드로 점프
 error:
-	thread_exit();
+	sema_up(&parent->fork_sema);
+	sys_exit(TID_ERROR);
 }
 
 /* 현재 실행 컨텍스트를 f_name으로 전환합니다.
@@ -332,7 +332,7 @@ void process_exit(void)
 	}
 
 	sema_up(&curr->wait_sema);
-	sema_down(&curr->free_sema); 
+	sema_down(&curr->free_sema);
 	process_cleanup();
 }
 
