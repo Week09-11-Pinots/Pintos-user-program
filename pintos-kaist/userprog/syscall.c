@@ -13,6 +13,8 @@
 #include "filesys/file.h"
 #include "threads/palloc.h"
 #include "threads/synch.h" 
+// #define STDIN_FILENO 0
+// #define STDOUT_FILENO 1
 
 
 void syscall_entry(void);
@@ -30,10 +32,7 @@ void sys_seek(int fd, unsigned position);
 unsigned sys_tell(int fd);
 void check_buffer(const void *buffer, unsigned size);
 
-<<<<<<< HEAD
 struct lock filesys_lock;
-=======
->>>>>>> 6c6fb8204ca0cb11ae6c8b873f24f96a37e8bef3
 /* 시스템 콜.
  *
  * 이전에는 시스템 콜 서비스가 인터럽트 핸들러(예: 리눅스의 int 0x80)에 의해 처리되었습니다.
@@ -64,10 +63,7 @@ void syscall_init(void)
 	write_msr(MSR_SYSCALL_MASK,
 			  FLAG_IF | FLAG_TF | FLAG_DF | FLAG_IOPL | FLAG_AC | FLAG_NT);
 
-<<<<<<< HEAD
 	lock_init(&filesys_lock);
-=======
->>>>>>> 6c6fb8204ca0cb11ae6c8b873f24f96a37e8bef3
 
 }
 
@@ -287,6 +283,9 @@ int sys_read(int fd, void *buffer, unsigned size)
 	if (file_obj == NULL){
 		return -1;
 	}
+
+	// if (fd == STDOUT_FILENO)
+	// 	return -1;
 
 	// 파일 읽기
 	lock_acquire(&filesys_lock);
