@@ -234,6 +234,9 @@ int process_exec(void *f_name)
 	ASSERT(cp_file_name != NULL);
 	success = load(cp_file_name, &_if);
 
+	thread_current()->running_file = filesys_open(cp_file_name);
+	file_deny_write(thread_current()->running_file);
+
 	palloc_free_page(file_name);
 	if (!success)
 		return -1;
@@ -325,6 +328,11 @@ void process_exit(void)
 		}
 		free(curr->fd_table);
 		curr->fd_table = NULL;
+	}
+	if (curr->running_file != NULL)
+	{
+		file_allow_write(curr->running_file);
+		file_close(curr->running_file);
 	}
 
 	sema_up(&curr->wait_sema);

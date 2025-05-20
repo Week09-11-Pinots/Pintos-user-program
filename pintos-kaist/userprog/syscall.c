@@ -12,6 +12,7 @@
 #include "userprog/process.h"
 #include "filesys/file.h"
 #include "threads/palloc.h"
+#include "threads/synch.h"
 
 void syscall_entry(void);
 void syscall_handler(struct intr_frame *);
@@ -27,6 +28,8 @@ int find_unused_fd(const char *file);
 void sys_seek(int fd, unsigned position);
 unsigned sys_tell(int fd);
 void check_buffer(const void *buffer, unsigned size);
+
+struct lock filesys_lock;
 
 /* 시스템 콜.
  *
@@ -56,6 +59,8 @@ void syscall_init(void)
  */
 	write_msr(MSR_SYSCALL_MASK,
 			  FLAG_IF | FLAG_TF | FLAG_DF | FLAG_IOPL | FLAG_AC | FLAG_NT);
+
+	lock_init(&filesys_lock);
 }
 
 /* The main system call interface */
