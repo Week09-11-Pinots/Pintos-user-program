@@ -282,14 +282,11 @@ int process_wait(tid_t child_tid UNUSED)
 	struct thread *child = get_my_child(child_tid);
 	if (child == NULL)
 		return -1;
-	if (child->wait_flag == true)
-		return -1;
-
-	child->wait_flag = true;
 	/* 자식의 wait_sema를 대기합니다. process_exit에서 wait_sema를 up 해줍니다 */
 	sema_down(&child->wait_sema);
 	int status = child->exit_status;
 	list_remove(&child->child_elem);
+	sema_up(&child->free_sema);
 	if (status < 0)
 		return -1;
 	return status;
@@ -335,6 +332,7 @@ void process_exit(void)
 	}
 
 	sema_up(&curr->wait_sema);
+	sema_down(&curr->free_sema); 
 	process_cleanup();
 }
 

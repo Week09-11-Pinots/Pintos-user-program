@@ -28,6 +28,7 @@ int find_unused_fd(const char *file);
 void sys_seek(int fd, unsigned position);
 unsigned sys_tell(int fd);
 void check_buffer(const void *buffer, unsigned size);
+int sys_wait (tid_t pid);
 
 struct lock filesys_lock;
 
@@ -90,7 +91,7 @@ void syscall_handler(struct intr_frame *f UNUSED)
 		f->R.rax = sys_exec((void *)arg1);
 		break;
 	case SYS_WAIT:
-		f->R.rax = process_wait((tid_t)arg1);
+		f->R.rax = sys_wait((tid_t)arg1);
 		break;
 	case SYS_CREATE:
 		f->R.rax = sys_create(arg1, arg2);
@@ -381,4 +382,9 @@ void sys_close(int fd)
 
 	file_close(file_object);
 	curr->fd_table[fd] = NULL;
+}
+
+int sys_wait (tid_t pid){
+	int status=process_wait(pid);
+	return status;
 }
