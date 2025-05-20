@@ -234,12 +234,11 @@ int process_exec(void *f_name)
 	ASSERT(cp_file_name != NULL);
 	success = load(cp_file_name, &_if);
 
-	thread_current()->running_file = filesys_open(cp_file_name);
-	file_deny_write(thread_current()->running_file);
-
 	palloc_free_page(file_name);
 	if (!success)
 		return -1;
+	thread_current()->running_file = filesys_open(cp_file_name);
+	file_deny_write(thread_current()->running_file);
 
 	// hex_dump(_if.rsp, _if.rsp, USER_STACK - (uint64_t)_if.rsp, true);
 	/* 프로세스를 전환합니다. */
@@ -325,7 +324,7 @@ void process_exit(void)
 		{
 			if (curr->fd_table[i] != NULL)
 				file_close(curr->fd_table[i]); // 각 파일들 닫아주기
-				}
+		}
 		free(curr->fd_table);
 		curr->fd_table = NULL;
 	}
