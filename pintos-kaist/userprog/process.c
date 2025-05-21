@@ -332,16 +332,7 @@ void process_exit(void)
 	 * TODO: 프로세스 종료 메시지를 구현하세요 (project2/process_termination.html 참고).
 	 * TODO: 우리는 이곳에 프로세스 자원 정리를 구현하는 것을 추천합니다. */
 	/* fd 테이블 정리 */
-	// if (curr->fd_table != NULL)
-	// {
-	// 	for (int i = 0; i < MAX_FD; i++)
-	// 	{
-	// 		if (curr->fd_table[i] != NULL)
-	// 			file_close(curr->fd_table[i]); // 각 파일들 닫아주기
-	// 	}
-	// 	free(curr->fd_table);
-	// 	curr->fd_table = NULL;
-	// }
+	
 	palloc_free_multiple(curr->fd_table, FDT_PAGES);
 	if (curr->running_file != NULL)
 	{
