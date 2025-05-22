@@ -195,7 +195,7 @@ void sys_halt()
 static int sys_write(int fd, const void *buffer, unsigned size)
 {
 	check_buffer(buffer, size);
-		// fd가 유효한지 먼저 검사
+	// fd가 유효한지 먼저 검사
 	if (fd < 0 || fd >= MAX_FD)
 		return -1;
 
@@ -357,6 +357,11 @@ void sys_seek(int fd, unsigned position)
 		return;
 	}
 
+	/* 파일 끝을 넘어가는 포인터 이동 방어 */
+	off_t length = file_length(file_obj);
+	if (position > length)
+		position = length;
+
 	/* 파일의 현재 읽기/쓰기 위치를 position으로 이동 */
 	file_seek(file_obj, position);
 }
@@ -388,8 +393,8 @@ unsigned sys_tell(int fd)
 void sys_close(int fd)
 {
 	struct thread *curr = thread_current();
-	if (fd < 2 || fd >= MAX_FD)
-		return NULL;
+	if (fd < 0 || fd >= MAX_FD)
+		return;
 
 	if (curr->fd_table[fd] == STDIN)
 		curr->stdin_count--;
@@ -418,6 +423,9 @@ int sys_dup2(int oldfd, int newfd)
 	struct thread *cur = thread_current();
 
 	/* oldfd가 유효하지 않으면, 실패하며 -1을 반환하고, newfd는 닫히지 않습니다. */
+	if (oldfd < 0 || oldfd >= MAX_FD)
+		return NULL;
+
 	if (cur->fd_table[oldfd] == NULL)
 		return -1;
 
@@ -436,10 +444,10 @@ int sys_dup2(int oldfd, int newfd)
 	if (cur->fd_table[newfd] != NULL)
 	{
 		lock_acquire(&filesys_lock);
-		file_close(cur->fd_table[newfd]);
+		sys_close(newfd);
 		lock_release(&filesys_lock);
 	}
 	cur->fd_table[newfd] = cur->fd_table[oldfd];
 
-	return 1;
+	return newfd;
 }
