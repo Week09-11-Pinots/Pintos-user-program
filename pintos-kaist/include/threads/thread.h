@@ -35,6 +35,10 @@ typedef int tid_t;
 #define FDT_PAGES 3					// pages to allocate for file descriptor tables (thread_create, process_exit)
 #define MAX_FD FDT_PAGES * (1 << 9) // Limit fd_idx
 
+/* Project2 - extra */
+#define STDIN 0
+#define STDOUT 1
+
 /* A kernel thread or user process.
  *
  * Each thread structure is stored in its own 4 kB page.  The
@@ -120,6 +124,9 @@ struct thread
 	struct list_elem child_elem;
 	struct file *running_file;
 	int exit_status; /* 종료 코드 저장 */
+
+	int stdin_count;
+	int stdout_count;
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */

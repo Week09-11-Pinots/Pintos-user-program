@@ -41,6 +41,8 @@ static void process_init(void)
 	// current->fd_table = calloc(MAX_FD, sizeof(struct file *));
 	current->fd_table = palloc_get_multiple(PAL_ZERO, FDT_PAGES);
 	current->fd_idx = 2;
+	current->stdin_count = 0;
+	current->stdout_count = 1;
 	ASSERT(current->fd_table != NULL);
 	sema_init(&current->fork_sema, 0);
 }
@@ -332,7 +334,7 @@ void process_exit(void)
 	 * TODO: 프로세스 종료 메시지를 구현하세요 (project2/process_termination.html 참고).
 	 * TODO: 우리는 이곳에 프로세스 자원 정리를 구현하는 것을 추천합니다. */
 	/* fd 테이블 정리 */
-	
+
 	palloc_free_multiple(curr->fd_table, FDT_PAGES);
 	if (curr->running_file != NULL)
 	{
