@@ -118,6 +118,9 @@ void syscall_handler(struct intr_frame *f UNUSED)
 	case SYS_CLOSE:
 		sys_close(arg1);
 		break;
+	case SYS_DUP2:
+		// TODO
+		break;
 	default:
 		thread_exit();
 		break;
@@ -389,4 +392,35 @@ int sys_wait(tid_t pid)
 {
 	int status = process_wait(pid);
 	return status;
+}
+
+int dup2(int oldfd, int newfd)
+{
+	struct thread *cur = thread_current();
+
+	/* oldfd가 유효하지 않으면, 실패하며 -1을 반환하고, newfd는 닫히지 않습니다. */
+	if (cur->fd_table[oldfd] == NULL)
+		return -1;
+
+	/* oldfd와 newfd가 같으면, 아무 동작도 하지 않고 newfd를 반환합니다. */
+	if (oldfd == newfd)
+		return newfd;
+
+	if (oldfd == STDIN)
+		cur->stdin_count++;
+	else if (oldfd == STDOUT)
+		cur->stdout_count++;
+	else
+		increase_dup_count(cur->fd_table[oldfd]);
+
+	/* newfd가 이미 열려 있는 경우, 조용히 닫은 후에 oldfd를 복제합니다. */
+	if (cur->fd_table[newfd] != NULL)
+	{
+		lock_acquire(&filesys_lock);
+		file_close(cur->fd_table[newfd]);
+		lock_release(&filesys_lock);
+	}
+	cur->fd_table[newfd] = cur->fd_table[oldfd];
+
+	return 1;
 }
