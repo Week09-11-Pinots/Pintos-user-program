@@ -331,7 +331,7 @@ int sys_open(const char *file)
 
 	int fd = find_unused_fd(file_obj);
 	lock_release(&filesys_lock);
-	return fd + 1;
+	return fd;
 }
 
 /* 현재 열린 파일의 커서 위치를 지정한 위치로 이동하는 시스템 콜 */
@@ -388,10 +388,10 @@ void sys_close(int fd)
 	if (fd < 2 || fd >= MAX_FD)
 		return NULL;
 
-	if (fd == STDIN)
+	if (curr->fd_table[fd] == STDIN)
 		curr->stdin_count--;
 
-	if (fd == STDOUT)
+	if (curr->fd_table[fd] == STDOUT)
 		curr->stdout_count--;
 
 	struct file *file_object = curr->fd_table[fd];
@@ -422,9 +422,9 @@ int sys_dup2(int oldfd, int newfd)
 	if (oldfd == newfd)
 		return newfd;
 
-	if (oldfd == STDIN)
+	if (cur->fd_table[oldfd] == STDIN)
 		cur->stdin_count++;
-	else if (oldfd == STDOUT)
+	else if (cur->fd_table[oldfd] == STDOUT)
 		cur->stdout_count++;
 	else
 		increase_dup_count(cur->fd_table[oldfd]);
