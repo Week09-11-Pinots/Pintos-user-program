@@ -345,14 +345,18 @@ void process_exit(void)
 	 * TODO: 우리는 이곳에 프로세스 자원 정리를 구현하는 것을 추천합니다. */
 	/* fd 테이블 정리 */
 
-	for (int i = 0; i < MAX_FD; i++)
+	if (curr->fd_table != NULL)
 	{
-		if (curr->fd_table[i] != NULL)
+		for (int i = 0; i < MAX_FD; i++)
 		{
-			sys_close(i);
-			curr->fd_table[i] = NULL;
+			if (curr->fd_table[i] != NULL)
+			{
+				sys_close(i);
+				curr->fd_table[i] = NULL;
+			}
 		}
 	}
+
 	palloc_free_multiple(curr->fd_table, FDT_PAGES);
 	if (curr->running_file != NULL)
 	{
