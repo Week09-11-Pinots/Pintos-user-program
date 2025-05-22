@@ -270,13 +270,17 @@ int sys_read(int fd, void *buffer, unsigned size)
 	}
 
 	// stdin 처리
-	if (fd == 0)
+	if (fd == STDIN)
 	{
-		for (unsigned i = 0; i < size; i++)
+		if (cur->stdin_count != 0)
 		{
-			((char *)buffer)[i] = input_getc();
+			for (unsigned i = 0; i < size; i++)
+			{
+				((char *)buffer)[i] = input_getc();
+			}
+			return size;
 		}
-		return size;
+		return -1;
 	}
 
 	struct file *file_obj = cur->fd_table[fd];
@@ -380,11 +384,20 @@ void sys_close(int fd)
 	struct thread *curr = thread_current();
 	if (fd < 2 || fd >= MAX_FD)
 		return NULL;
+
+	if (fd == STDIN)
+		curr->stdin_count--;
+
+	if (fd == STDOUT)
+		curr->stdout_count--;
+
 	struct file *file_object = curr->fd_table[fd];
 	if (file_object == NULL)
 		return;
+	decrease_dup_count(file_object);
 
-	file_close(file_object);
+	if (check_dup_count(file_object) == 0)
+		file_close(file_object);
 	curr->fd_table[fd] = NULL;
 }
 
