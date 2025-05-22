@@ -20,9 +20,15 @@ void increase_dup_count(struct file *file)
 {
 	file->dup_count++;
 }
+
 void decrease_dup_count(struct file *file)
 {
 	file->dup_count--;
+}
+
+int check_dup_count(struct file *file)
+{
+	return file->dup_count;
 }
 
 /*
