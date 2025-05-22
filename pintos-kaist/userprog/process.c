@@ -41,6 +41,10 @@ static void process_init(void)
 	// current->fd_table = calloc(MAX_FD, sizeof(struct file *));
 	current->fd_table = palloc_get_multiple(PAL_ZERO, FDT_PAGES);
 	current->fd_idx = 2;
+	current->fd_table[0] = STDIN;
+	current->fd_table[1] = STDOUT;
+	current->stdin_count = 1;
+	current->stdout_count = 1;
 	ASSERT(current->fd_table != NULL);
 	sema_init(&current->fork_sema, 0);
 }
@@ -211,10 +215,18 @@ __do_fork(void *aux)
 		else
 		{
 			if (parent->fd_table[fd] != NULL)
-				current->fd_table[fd] = file_duplicate(parent->fd_table[fd]);
+			{
+				if (parent->fd_table[fd] == STDIN || parent->fd_table[fd] == STDOUT)
+					current->fd_table[fd] = parent->fd_table[fd];
+				else
+					current->fd_table[fd] = file_duplicate(parent->fd_table[fd]);
+			}
 		}
 	}
 	current->fd_idx = parent->fd_idx;
+	/* extra2 */
+	current->stdin_count = parent->stdin_count;
+	current->stdout_count = parent->stdout_count;
 
 	if_.R.rax = 0;
 
@@ -332,7 +344,7 @@ void process_exit(void)
 	 * TODO: 프로세스 종료 메시지를 구현하세요 (project2/process_termination.html 참고).
 	 * TODO: 우리는 이곳에 프로세스 자원 정리를 구현하는 것을 추천합니다. */
 	/* fd 테이블 정리 */
-	
+
 	palloc_free_multiple(curr->fd_table, FDT_PAGES);
 	if (curr->running_file != NULL)
 	{
