@@ -6,14 +6,14 @@
 - mlfqs 구현 완료
 
 ### 사용자 프로그램
-- 2025-05-21 All pass
-  ![image](https://github.com/user-attachments/assets/6778cc0f-df5e-4715-8206-61fd91f575fe)
+- 2025-05-22 extra 과제까지 All pass
+
+  ![image](https://github.com/user-attachments/assets/3137f50e-9475-4fb8-9aa6-0c19cb471c03)
+
 
 - 18.04 사용자가 아니신 분들은 세그먼트를 동일한 메모리에 매핑하려는 버그가 있어 다른 버전을 사용하시거나, 밑의 블로그를 참고하세요.
 - https://just-live.tistory.com/entry/pintos-troubleshooting (버그 발생 이유)
 - https://gooch123.tistory.com/20 (해결 방법)
-
-- 이후 extra 과제 진행 예정
 
 ---
 ### 사용 환경
