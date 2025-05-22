@@ -343,7 +343,7 @@ void sys_seek(int fd, unsigned position)
 	struct thread *cur = thread_current();
 
 	/* 유효하지 않은 파일 디스크립터인 경우 아무 작업도 하지 않음 */
-	if (fd < 0 || fd >= MAX_FD)
+	if (fd < 0 || fd >= MAX_FD || cur->fd_table[fd] == STDIN || cur->fd_table[fd] == STDOUT)
 	{
 		return;
 	}
@@ -427,7 +427,7 @@ int sys_dup2(int oldfd, int newfd)
 
 	/* oldfd가 유효하지 않으면, 실패하며 -1을 반환하고, newfd는 닫히지 않습니다. */
 	if (oldfd < 0 || oldfd >= MAX_FD)
-		return NULL;
+		return -1;
 
 	if (cur->fd_table[oldfd] == NULL)
 		return -1;
