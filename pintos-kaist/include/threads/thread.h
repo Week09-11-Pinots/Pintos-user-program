@@ -36,8 +36,8 @@ typedef int tid_t;
 #define MAX_FD FDT_PAGES * (1 << 9) // Limit fd_idx
 
 /* Project2 - extra */
-#define STDIN 0
-#define STDOUT 1
+#define STDIN 1
+#define STDOUT 2
 
 /* A kernel thread or user process.
  *

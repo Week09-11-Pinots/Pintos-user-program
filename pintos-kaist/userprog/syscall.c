@@ -29,6 +29,7 @@ void sys_seek(int fd, unsigned position);
 unsigned sys_tell(int fd);
 void check_buffer(const void *buffer, unsigned size);
 int sys_wait(tid_t pid);
+int sys_dup2(int oldfd, int newfd);
 
 struct lock filesys_lock;
 /* 시스템 콜.
@@ -119,7 +120,7 @@ void syscall_handler(struct intr_frame *f UNUSED)
 		sys_close(arg1);
 		break;
 	case SYS_DUP2:
-		// TODO
+		f->R.rax = sys_dup2(arg1, arg2);
 		break;
 	default:
 		thread_exit();
@@ -195,7 +196,9 @@ static int sys_write(int fd, const void *buffer, unsigned size)
 {
 	check_buffer(buffer, size);
 
-	if (fd == 1)
+	struct thread *cur = thread_current();
+
+	if (cur->fd_table[fd] == STDOUT && cur->stdout_count != 0)
 	{
 		putbuf(buffer, size);
 		return size;
@@ -270,7 +273,7 @@ int sys_read(int fd, void *buffer, unsigned size)
 	}
 
 	// stdin 처리
-	if (fd == STDIN)
+	if (cur->fd_table[fd] == STDIN)
 	{
 		if (cur->stdin_count != 0)
 		{
@@ -285,7 +288,7 @@ int sys_read(int fd, void *buffer, unsigned size)
 
 	struct file *file_obj = cur->fd_table[fd];
 
-	if (file_obj == NULL)
+	if (file_obj == NULL || file_obj == STDIN || file_obj == STDOUT)
 	{
 		return -1;
 	}
@@ -328,7 +331,7 @@ int sys_open(const char *file)
 
 	int fd = find_unused_fd(file_obj);
 	lock_release(&filesys_lock);
-	return fd;
+	return fd + 1;
 }
 
 /* 현재 열린 파일의 커서 위치를 지정한 위치로 이동하는 시스템 콜 */
@@ -407,7 +410,7 @@ int sys_wait(tid_t pid)
 	return status;
 }
 
-int dup2(int oldfd, int newfd)
+int sys_dup2(int oldfd, int newfd)
 {
 	struct thread *cur = thread_current();
 

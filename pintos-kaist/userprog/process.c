@@ -41,6 +41,8 @@ static void process_init(void)
 	// current->fd_table = calloc(MAX_FD, sizeof(struct file *));
 	current->fd_table = palloc_get_multiple(PAL_ZERO, FDT_PAGES);
 	current->fd_idx = 2;
+	current->fd_table[0] = STDIN;
+	current->fd_table[1] = STDOUT;
 	current->stdin_count = 1;
 	current->stdout_count = 1;
 	ASSERT(current->fd_table != NULL);
