@@ -403,8 +403,11 @@ void sys_close(int fd)
 		curr->stdout_count--;
 
 	struct file *file_object = curr->fd_table[fd];
-	if (file_object == NULL)
+	if (file_object == NULL || file_object == STDIN || file_object == STDOUT)
+	{
+		curr->fd_table[fd] = NULL;
 		return;
+	}
 	decrease_dup_count(file_object);
 
 	if (check_dup_count(file_object) == 0)
