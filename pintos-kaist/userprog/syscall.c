@@ -194,6 +194,10 @@ void sys_halt()
 
 static int sys_write(int fd, const void *buffer, unsigned size)
 {
+	if (fd < 0 || fd >= MAX_FD)
+	{
+		return -1;
+	}
 	check_buffer(buffer, size);
 
 	struct thread *cur = thread_current();
