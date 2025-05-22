@@ -195,6 +195,9 @@ void sys_halt()
 static int sys_write(int fd, const void *buffer, unsigned size)
 {
 	check_buffer(buffer, size);
+		// fd가 유효한지 먼저 검사
+	if (fd < 0 || fd >= MAX_FD)
+		return -1;
 
 	struct thread *cur = thread_current();
 
