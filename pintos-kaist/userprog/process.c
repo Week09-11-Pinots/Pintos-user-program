@@ -41,7 +41,7 @@ static void process_init(void)
 	// current->fd_table = calloc(MAX_FD, sizeof(struct file *));
 	current->fd_table = palloc_get_multiple(PAL_ZERO, FDT_PAGES);
 	current->fd_idx = 2;
-	current->stdin_count = 0;
+	current->stdin_count = 1;
 	current->stdout_count = 1;
 	ASSERT(current->fd_table != NULL);
 	sema_init(&current->fork_sema, 0);
@@ -217,6 +217,9 @@ __do_fork(void *aux)
 		}
 	}
 	current->fd_idx = parent->fd_idx;
+	/* extra2 */
+	current->stdin_count = parent->stdin_count;
+	current->stdout_count = parent->stdout_count;
 
 	if_.R.rax = 0;
 
