@@ -331,7 +331,7 @@ int sys_open(const char *file)
 
 	int fd = find_unused_fd(file_obj);
 	lock_release(&filesys_lock);
-	return fd + 1;
+	return fd ;
 }
 
 /* 현재 열린 파일의 커서 위치를 지정한 위치로 이동하는 시스템 콜 */
