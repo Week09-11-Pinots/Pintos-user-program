@@ -15,6 +15,16 @@ struct file
 /* Opens a file for the given INODE, of which it takes ownership,
  * and returns the new file.  Returns a null pointer if an
  * allocation fails or if INODE is null. */
+
+void increase_dup_count(struct file *file)
+{
+	file->dup_count++;
+}
+void decrease_dup_count(struct file *file)
+{
+	file->dup_count--;
+}
+
 /*
 주어진 inode를 가진 file 구조체를 만들어 반환 .
 */
