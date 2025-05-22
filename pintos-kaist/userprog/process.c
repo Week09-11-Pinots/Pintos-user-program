@@ -215,7 +215,12 @@ __do_fork(void *aux)
 		else
 		{
 			if (parent->fd_table[fd] != NULL)
-				current->fd_table[fd] = file_duplicate(parent->fd_table[fd]);
+			{
+				if (parent->fd_table[fd] == STDIN || parent->fd_table[fd] == STDOUT)
+					current->fd_table[fd] = parent->fd_table[fd];
+				else
+					current->fd_table[fd] = file_duplicate(parent->fd_table[fd]);
+			}
 		}
 	}
 	current->fd_idx = parent->fd_idx;
