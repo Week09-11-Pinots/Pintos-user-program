@@ -210,7 +210,9 @@ static int sys_write(int fd, const void *buffer, unsigned size)
 	if (f == NULL)
 		return -1;
 
+	lock_acquire(&filesys_lock);
 	int bytes_written = file_write(f, buffer, size);
+	lock_release(&filesys_lock);
 	return bytes_written;
 }
 
