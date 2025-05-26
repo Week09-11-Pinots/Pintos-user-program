@@ -774,6 +774,9 @@ lazy_load_segment(struct page *page, void *aux)
 	/* TODO: Load the segment from the file */
 	/* TODO: 이 함수는 해당 VA(가상 주소)에서 첫 페이지 폴트가 발생할 때 호출됩니다. */
 	/* TODO: 이 함수를 호출할 때 VA는 사용할 수 있습니다. */
+
+	// kva는 page 안에 이미 있다
+	// 타입별로 다른 초기화 작업을 거쳐야하나?
 }
 
 /* FILE의 OFS 오프셋에서 시작하여 UPAGE 주소에 세그먼트를 로드합니다.
@@ -830,6 +833,7 @@ setup_stack(struct intr_frame *if_)
 	 * TODO: If success, set the rsp accordingly.
 	 * TODO: You should mark the page is stack. */
 	/* TODO: Your code goes here */
+	vm_do_claim_page(stack_bottom);
 
 	return success;
 }

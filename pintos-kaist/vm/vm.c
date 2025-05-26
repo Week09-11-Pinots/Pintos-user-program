@@ -3,6 +3,7 @@
 #include "threads/malloc.h"
 #include "vm/vm.h"
 #include "vm/inspect.h"
+#include "threads/mmu.h"
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
@@ -54,6 +55,25 @@ bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writabl
 		/* TODO: VM 타입에 따라 페이지를 생성하고, 초기화 함수를 가져온 뒤,
 		 * TODO: uninit_new를 호출하여 "uninit" 페이지 구조체를 생성하세요.
 		 * TODO: uninit_new 호출 후에는 필요한 필드를 수정해야 합니다. */
+		bool (*page_initializer)(struct page *, enum vm_type, void *kva);
+		struct page *page = malloc(sizeof(struct page));
+		page->writable = writable;
+
+		switch (VM_TYPE(type))
+		{
+		case VM_ANON:
+			page_initializer = anon_initializer;
+			break;
+		case VM_FILE:
+			page_initializer = file_backed_initializer;
+			break;
+		default:
+			free(page);
+			goto err;
+			break;
+		}
+
+		uninit_new(page, upage, init, type, aux, page_initializer);
 
 		/* TODO: 생성한 페이지를 spt에 삽입하세요. */
 	}
@@ -129,6 +149,9 @@ vm_get_frame(void)
 static void
 vm_stack_growth(void *addr UNUSED)
 {
+	/* 스택 최하단에 익명 페이지를 추가하여 사용
+	 * addr은 PGSIZE로 내림(정렬)하여 사용	 */
+	vm_alloc_page(VM_ANON, addr, true); // 스택 최하단에 익명 페이지 추가
 }
 
 /* Handle the fault on write_protected page */
@@ -144,6 +167,17 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED,
 	struct supplemental_page_table *spt UNUSED = &thread_current()->spt;
 	struct page *page = NULL;
 	/* TODO: Validate the fault */
+	/* bogus 폴트인지? 스택확장 폴트인지?
+	 * SPT 뒤져서 존재하면 bogus 폴트!!
+	 * addr이 유저 스택 시작 주소 + 1MB를 넘지 않으면 스택확장 폴트
+	 * 찐폴트면 false 리턴
+	 * 아니면 vm_do_claim_page 호출	*/
+
+	/* 스택확장 폴트에서 valid를 확인하려면 유저 스택 시작 주소 + 1MB를 넘는지 확인
+	 * addr = thread 내의 user_rsp
+	 * addr은 user_rsp보다 크면 안됨
+	 * stack_growth 호출해야함 */
+
 	/* TODO: Your code goes here */
 
 	return vm_do_claim_page(page);
@@ -160,8 +194,9 @@ void vm_dealloc_page(struct page *page)
 /* Claim the page that allocate on VA. */
 bool vm_claim_page(void *va UNUSED)
 {
-	struct page *page = NULL;
+	struct page *page = NULL; // 스택 첫번째페이지
 	/* TODO: Fill this function */
+	page->va = va;
 
 	return vm_do_claim_page(page);
 }
@@ -177,6 +212,7 @@ vm_do_claim_page(struct page *page)
 	page->frame = frame;
 
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
+	pml4_set_page(thread_current()->pml4, page->va, frame->kva, page->writable);
 
 	return swap_in(page, frame->kva);
 }

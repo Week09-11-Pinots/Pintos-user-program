@@ -47,7 +47,8 @@ struct page
 	void *va;			 /* 사용자 공간 기준의 주소 */
 	struct frame *frame; /* frame에 대한 역참조 */
 
-	/* 구현에 필요한 부분 */
+	/* 구현 필드 */
+	bool writable;
 
 	/* 타입별 데이터는 union에 바인딩됩니다.
 	 * 각 함수는 현재 union을 자동으로 감지합니다. */
