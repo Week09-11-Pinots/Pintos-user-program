@@ -64,6 +64,8 @@ bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writabl
 		case VM_ANON:
 			page_initializer = anon_initializer;
 			break;
+		case VM_MMAP:
+			/* 매핑 카운트를 추가해두자 */
 		case VM_FILE:
 			page_initializer = file_backed_initializer;
 			break;

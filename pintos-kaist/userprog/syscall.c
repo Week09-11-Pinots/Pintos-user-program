@@ -13,6 +13,8 @@
 #include "filesys/file.h"
 #include "threads/palloc.h"
 #include "threads/synch.h"
+#include "lib/user/syscall.h"
+#include "vm/vm.h"
 
 void syscall_entry(void);
 void syscall_handler(struct intr_frame *);
@@ -122,6 +124,11 @@ void syscall_handler(struct intr_frame *f UNUSED)
 	case SYS_DUP2:
 		f->R.rax = sys_dup2(arg1, arg2);
 		break;
+	case SYS_MMAP:
+		f->R.rax = sys_mmap(arg1, arg2, arg3, arg4, arg5);
+		break;
+	case SYS_MUNMAP:
+		break;
 	default:
 		thread_exit();
 		break;
@@ -153,6 +160,50 @@ void check_buffer(const void *buffer, unsigned size)
 			sys_exit(-1);
 		}
 	}
+}
+
+/* addr은 mmap으로 할당받은 시작주소 */
+void sys_munmap(void *addr)
+{
+	/** TODO: mmap으로 매핑된 모든 페이지를 없애야함
+	 * 1. SPT에서 제거
+	 * 2. 물리 페이지에서도 제거
+	 * 3. 매핑 카운트나 page 구조체 내의 카운트를 사용해서 제거
+	 */
+}
+
+void *sys_mmap(void *addr, size_t length, int writable, int fd, off_t offset)
+{
+	int filesize = sys_filesize(fd);
+	if (filesize == 0 || length == 0 || fd == 0 || fd == 1)
+		return MAP_FAILED;
+
+	if ((uint64_t)addr == 0 || (uint64_t)addr % PGSIZE != 0)
+		return MAP_FAILED;
+
+	void *start_page = addr;
+	void *end_page = addr + length;
+
+	for (; end_page > start_page; start_page + PGSIZE)
+	{
+		if (spt_find_page(thread_current()->spt, start_page) != NULL)
+			return MAP_FAILED;
+	}
+
+	size_t remain_length = length;
+	void *cur_addr = addr;
+	off_t cur_offset = offset;
+
+	while (remain_length > 0)
+	{
+		size_t allocate_length = remain_length > PGSIZE ? PGSIZE : remain_length;
+		do_mmap(cur_addr, allocate_length, writable, thread_current()->fd_table[fd], cur_offset);
+		remain_length -= PGSIZE;
+		cur_addr += PGSIZE;
+		cur_offset += PGSIZE;
+	}
+
+	return addr;
 }
 
 int sys_exec(char *file_name)

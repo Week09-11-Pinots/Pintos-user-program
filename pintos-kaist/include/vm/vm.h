@@ -13,6 +13,8 @@ enum vm_type
 	VM_FILE = 2,
 	/* 페이지 캐시를 보유하는 페이지, 프로젝트 4용 */
 	VM_PAGE_CACHE = 3,
+	/* mmap 파일 페이지 */
+	VM_MMAP = 4,
 
 	/* 상태를 저장하기 위한 비트 플래그 */
 
