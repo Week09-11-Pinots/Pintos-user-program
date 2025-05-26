@@ -14,13 +14,12 @@ void vm_init(void)
 	pagecache_init();
 #endif
 	register_inspect_intr();
-	/* DO NOT MODIFY UPPER LINES. */
-	/* TODO: Your code goes here. */
+	/* 이 위쪽은 수정하지 마세요 !! */
+	/* TODO: 이 아래쪽부터 코드를 추가하세요 */
 }
 
-/* Get the type of the page. This function is useful if you want to know the
- * type of the page after it will be initialized.
- * This function is fully implemented now. */
+/* 페이지의 타입을 가져옵니다. 이 함수는 페이지가 초기화된 후 타입을 알고 싶을 때 유용합니다.
+ * 이 함수는 이미 완전히 구현되어 있습니다. */
 enum vm_type
 page_get_type(struct page *page)
 {
@@ -39,9 +38,8 @@ static struct frame *vm_get_victim(void);
 static bool vm_do_claim_page(struct page *page);
 static struct frame *vm_evict_frame(void);
 
-/* Create the pending page object with initializer. If you want to create a
- * page, do not create it directly and make it through this function or
- * `vm_alloc_page`. */
+/* 초기화 함수와 함께 대기 중인 페이지 객체를 생성합니다. 페이지를 직접 생성하지 말고,
+ * 반드시 이 함수나 `vm_alloc_page`를 통해 생성하세요. */
 bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writable,
 									vm_initializer *init, void *aux)
 {
@@ -50,7 +48,7 @@ bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writabl
 
 	struct supplemental_page_table *spt = &thread_current()->spt;
 
-	/* Check wheter the upage is already occupied or not. */
+	/* 이미 해당 page가 SPT에 존재하는지 확인합니다 */
 	if (spt_find_page(spt, upage) == NULL)
 	{
 		/* TODO: VM 타입에 따라 페이지를 생성하고, 초기화 함수를 가져온 뒤,
@@ -64,6 +62,8 @@ err:
 }
 
 /* Find VA from spt and return page. On error, return NULL. */
+/* 가상 주소를 통해 SPT에서 페이지를 찾아 리턴합니다.
+ * 에러가 발생하면 NULL을 리턴하세요 */
 struct page *
 spt_find_page(struct supplemental_page_table *spt UNUSED, void *va UNUSED)
 {
@@ -99,8 +99,8 @@ vm_get_victim(void)
 	return victim;
 }
 
-/* Evict one page and return the corresponding frame.
- * Return NULL on error.*/
+/* 한 페이지를 교체(evict)하고 해당 프레임을 반환합니다.
+ * 에러가 발생하면 NULL을 반환합니다.*/
 static struct frame *
 vm_evict_frame(void)
 {
@@ -110,10 +110,10 @@ vm_evict_frame(void)
 	return NULL;
 }
 
-/* palloc() and get frame. If there is no available page, evict the page
- * and return it. This always return valid address. That is, if the user pool
- * memory is full, this function evicts the frame to get the available memory
- * space.*/
+/* palloc()을 사용하여 프레임을 할당합니다.
+ * 사용 가능한 페이지가 없으면 페이지를 교체(evict)하여 반환합니다.
+ * 이 함수는 항상 유효한 주소를 반환합니다. 즉, 사용자 풀 메모리가 가득 차면,
+ * 이 함수는 프레임을 교체하여 사용 가능한 메모리 공간을 확보합니다.*/
 static struct frame *
 vm_get_frame(void)
 {
