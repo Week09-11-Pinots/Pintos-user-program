@@ -5,8 +5,7 @@
 #include "vm/inspect.h"
 #include "threads/mmu.h"
 
-/* Initializes the virtual memory subsystem by invoking each subsystem's
- * intialize codes. */
+/* 각 서브시스템의 초기화 코드를 호출하여 가상 메모리 서브시스템을 초기화합니다. */
 void vm_init(void)
 {
 	vm_anon_init();
@@ -193,7 +192,7 @@ void vm_dealloc_page(struct page *page)
 	free(page);
 }
 
-/* Claim the page that allocate on VA. */
+/* VA에 할당된 페이지를 요구합니다 . */
 bool vm_claim_page(void *va UNUSED)
 {
 	struct page *page = NULL; // 스택 첫번째페이지
@@ -203,7 +202,7 @@ bool vm_claim_page(void *va UNUSED)
 	return vm_do_claim_page(page);
 }
 
-/* Claim the PAGE and set up the mmu. */
+/* PAGE를 요구하고 mmu를 설정합니다*/
 static bool
 vm_do_claim_page(struct page *page)
 {
@@ -233,6 +232,6 @@ bool supplemental_page_table_copy(struct supplemental_page_table *dst UNUSED,
 /* Free the resource hold by the supplemental page table */
 void supplemental_page_table_kill(struct supplemental_page_table *spt UNUSED)
 {
-	/* TODO: Destroy all the supplemental_page_table hold by thread and
-	 * TODO: writeback all the modified contents to the storage. */
+	/* TODO: 스레드가 보유한 모든 supplemental_page_table을 제거하고,
+	 * TODO: 수정된 내용을 스토리지에 기록(writeback)하세요. */
 }

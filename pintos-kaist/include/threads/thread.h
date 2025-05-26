@@ -39,20 +39,20 @@ typedef int tid_t;
 #define STDIN 1
 #define STDOUT 2
 
-/* A kernel thread or user process.
+/* 커널 스레드 또는 유저 프로세스.
  *
- * Each thread structure is stored in its own 4 kB page.  The
- * thread structure itself sits at the very bottom of the page
- * (at offset 0).  The rest of the page is reserved for the
- * thread's kernel stack, which grows downward from the top of
- * the page (at offset 4 kB).  Here's an illustration:
+ * 각 스레드 구조체는 자신만의 4KB 페이지에 저장됩니다.
+ * 스레드 구조체 자체는 페이지의 맨 아래(오프셋 0)에 위치합니다.
+ * 페이지의 나머지 부분은 해당 스레드의 커널 스택을 위해 예약되어 있으며,
+ * 커널 스택은 페이지의 맨 위(오프셋 4KB)에서 아래 방향으로 성장합니다.
+ * 아래는 이를 나타낸 그림입니다:
  *
  *      4 kB +---------------------------------+
- *           |          kernel stack           |
+ *           |          커널 스택               |
  *           |                |                |
  *           |                |                |
  *           |                V                |
- *           |         grows downward          |
+ *           |         아래로 성장함            |
  *           |                                 |
  *           |                                 |
  *           |                                 |
@@ -70,32 +70,31 @@ typedef int tid_t;
  *           |              status             |
  *      0 kB +---------------------------------+
  *
- * The upshot of this is twofold:
+ * 이 구조의 중요한 점은 두 가지입니다:
  *
- *    1. First, `struct thread' must not be allowed to grow too
- *       big.  If it does, then there will not be enough room for
- *       the kernel stack.  Our base `struct thread' is only a
- *       few bytes in size.  It probably should stay well under 1
- *       kB.
+ *    1. 첫째, `struct thread`의 크기가 너무 커지면 안 됩니다.
+ *       만약 커진다면 커널 스택을 위한 공간이 부족해질 수 있습니다.
+ *       기본 `struct thread`는 몇 바이트밖에 되지 않습니다.
+ *       1KB 이하로 유지하는 것이 좋습니다.
  *
- *    2. Second, kernel stacks must not be allowed to grow too
- *       large.  If a stack overflows, it will corrupt the thread
- *       state.  Thus, kernel functions should not allocate large
- *       structures or arrays as non-static local variables.  Use
- *       dynamic allocation with malloc() or palloc_get_page()
- *       instead.
+ *    2. 둘째, 커널 스택 역시 너무 커지면 안 됩니다.
+ *       만약 스택이 오버플로우되면 스레드 상태가 손상될 수 있습니다.
+ *       따라서 커널 함수에서는 큰 구조체나 배열을 비정적 지역 변수로 선언하지 말아야 합니다.
+ *       대신 malloc()이나 palloc_get_page()와 같은 동적 할당을 사용하세요.
  *
- * The first symptom of either of these problems will probably be
- * an assertion failure in thread_current(), which checks that
- * the `magic' member of the running thread's `struct thread' is
- * set to THREAD_MAGIC.  Stack overflow will normally change this
- * value, triggering the assertion. */
-/* The `elem' member has a dual purpose.  It can be an element in
- * the run queue (thread.c), or it can be an element in a
- * semaphore wait list (synch.c).  It can be used these two ways
- * only because they are mutually exclusive: only a thread in the
- * ready state is on the run queue, whereas only a thread in the
- * blocked state is on a semaphore wait list. */
+ * 이 두 가지 문제 중 어느 하나라도 발생하면,
+ * 실행 중인 스레드의 `struct thread`의 `magic` 멤버가 THREAD_MAGIC으로 설정되어 있는지 확인하는
+ * thread_current()에서 assertion 실패가 가장 먼저 나타날 것입니다.
+ * 스택 오버플로우가 발생하면 이 값이 변하게 되어 assertion이 트리거됩니다.
+ */
+/* `elem` 멤버는 두 가지 용도로 사용됩니다.
+ * run queue(thread.c)의 요소가 될 수도 있고,
+ * 세마포어 대기 리스트(synch.c)의 요소가 될 수도 있습니다.
+ * 이 두 가지 용도로 사용할 수 있는 이유는 상호 배타적이기 때문입니다:
+ * ready 상태의 스레드만 run queue에 들어가고,
+ * blocked 상태의 스레드만 세마포어 대기 리스트에 들어갑니다.
+ */
+
 struct thread
 {
 	/* Owned by thread.c. */

@@ -12,11 +12,11 @@ inspect (struct intr_frame *f) {
 	f->R.rax = PTE_ADDR (pml4_get_page (thread_current ()->pml4, va));
 }
 
-/* Tool for testing vm component. Calling this function via int 0x42.
- * Input:
- *   @RAX - Virtual address to inspect
- * Output:
- *   @RAX - Physical address that mmaped to input. */
+/* VM(가상 메모리) 컴포넌트 테스트용 도구입니다. 이 함수는 int 0x42를 통해 호출합니다.
+ * 입력:
+ *   @RAX - 조사할 가상 주소
+ * 출력:
+ *   @RAX - 입력된 가상 주소에 매핑된 물리 주소 */
 void
 register_inspect_intr (void) {
 	intr_register_int (0x42, 3, INTR_OFF, inspect, "Inspect Virtual Memory");
