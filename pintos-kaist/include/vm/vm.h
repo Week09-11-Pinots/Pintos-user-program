@@ -51,6 +51,8 @@ struct page
 
 	/* 구현 필드 */
 	bool writable;
+	// 매핑된 프레임이 스왑되어있는가??
+	bool is_swap;
 
 	/* 타입별 데이터는 union에 바인딩됩니다.
 	 * 각 함수는 현재 union을 자동으로 감지합니다. */

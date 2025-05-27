@@ -64,7 +64,8 @@ bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writabl
 			page_initializer = anon_initializer;
 			break;
 		case VM_MMAP:
-			/* 매핑 카운트를 추가해두자 */
+			/* 매핑 카운트를 추가해두자
+			   mmap_list로 mmap 페이지를 관리할거면 필요 x */
 		case VM_FILE:
 			page_initializer = file_backed_initializer;
 			break;
@@ -107,6 +108,11 @@ bool spt_insert_page(struct supplemental_page_table *spt UNUSED,
 void spt_remove_page(struct supplemental_page_table *spt, struct page *page)
 {
 	vm_dealloc_page(page);
+	/** TODO: page 해제
+	 * 매핑된 프레임을 해제해야하나?
+	 * 프레임이 스왑되어있는지 체크할것?
+	 * 아마 pml4_clear_page 사용하면 된대요
+	 */
 	return true;
 }
 
@@ -115,7 +121,7 @@ static struct frame *
 vm_get_victim(void)
 {
 	struct frame *victim = NULL;
-	/* TODO: The policy for eviction is up to you. */
+	/* TODO: 교체 정책을 여기서 구현해서 희생자 페이지 찾기 */
 
 	return victim;
 }
@@ -127,6 +133,10 @@ vm_evict_frame(void)
 {
 	struct frame *victim UNUSED = vm_get_victim();
 	/* TODO: swap out the victim and return the evicted frame. */
+
+	/** TODO: 여기서 swap_out 매크로를 호출??
+	 *	pml4_clear_page를 아마 사용?? (잘 모름)
+	 */
 
 	return NULL;
 }
@@ -140,6 +150,10 @@ vm_get_frame(void)
 {
 	struct frame *frame = NULL;
 	/* TODO: Fill this function. */
+	/**
+	 * 여기서 swap_out을 진행해야 합니다
+	 * pml4_clear_page를 사용해서 물리 주소를 클리어 합니다
+	 */
 
 	ASSERT(frame != NULL);
 	ASSERT(frame->page == NULL);
@@ -207,6 +221,10 @@ static bool
 vm_do_claim_page(struct page *page)
 {
 	struct frame *frame = vm_get_frame();
+	/** TODO: vm_get_frame이 실패하면 swap_out
+	 *	swap_out을 호출하려면 vm_evict_frame 호출
+	 *	vm_evict_frame에서 가져온 kva를 활용하세요
+	 */
 
 	/* Set links */
 	frame->page = page;
