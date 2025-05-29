@@ -222,8 +222,6 @@ vm_do_claim_page(struct page *page)
 {
 	struct frame *frame = vm_get_frame();
 	/** TODO: vm_get_frame이 실패하면 swap_out
-	 *	swap_out을 호출하려면 vm_evict_frame 호출
-	 *	vm_evict_frame에서 가져온 kva를 활용하세요
 	 */
 
 	/* Set links */

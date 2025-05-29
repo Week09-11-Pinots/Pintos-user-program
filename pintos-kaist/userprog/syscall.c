@@ -32,6 +32,7 @@ unsigned sys_tell(int fd);
 void check_buffer(const void *buffer, unsigned size);
 int sys_wait(tid_t pid);
 int sys_dup2(int oldfd, int newfd);
+void *sys_mmap(void *addr, size_t length, int writable, int fd, off_t offset);
 
 struct lock filesys_lock;
 /* 시스템 콜.
@@ -186,7 +187,7 @@ void *sys_mmap(void *addr, size_t length, int writable, int fd, off_t offset)
 
 	for (; end_page > start_page; start_page + PGSIZE)
 	{
-		if (spt_find_page(thread_current()->spt, start_page) != NULL)
+		if (spt_find_page(&thread_current()->spt, start_page) != NULL)
 			return MAP_FAILED;
 	}
 
